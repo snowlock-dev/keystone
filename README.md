@@ -1,5 +1,7 @@
 # keystone
 
+![image](assets/image.png)
+
 Keystone is my attempt at a private, local-first workspace website.
 
 It tries to combine all of the features I love from different apps/websites, while also allowing easy backups and a seamless experience.
@@ -12,3 +14,7 @@ It tries to combine all of the features I love from different apps/websites, whi
 - [ ] Add a timelog section with charts & graphs
 - [ ] Add a score tracker
 - [ ] Add a daily goal section with streaks
+
+## Credits
+
+* `assets/wallpaper.jpg` from: [Wallhaven](https://wallhaven.cc/w/yqekql)
