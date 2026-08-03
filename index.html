@@ -21,18 +21,37 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a href="#" class="nav-item active"><i class="ph-fill ph-house"></i> <span>Home</span></a>
-            <a href="#" class="nav-item"><i class="ph-fill ph-check-square-offset"></i> <span>Tasks</span></a>
-            <a href="#" class="nav-item"><i class="ph-fill ph-timer"></i> <span>Tracker</span></a>
-            <a href="#" class="nav-item"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
+            <a href="#" class="nav-item active" data-section="home"><i class="ph-fill ph-house"></i> <span>Home</span></a>
+            <a href="#" class="nav-item" data-section="tasks"><i class="ph-fill ph-check-square-offset"></i> <span>Tasks</span></a>
+            <a href="#" class="nav-item" data-section="tracker"><i class="ph-fill ph-timer"></i> <span>Tracker</span></a>
+            <a href="#" class="nav-item" data-section="notes"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
         </nav>
     </aside>
 
 
     <main class="main-area">
         <div class="app-container">
-            <h1>Dashboard</h1>
-            <p>Under construction...</p>
+
+            <div class="section-view active" data-section="home">
+              <h1>Dashboard</h1>
+              <p>Calendar will go here...</p>
+            </div>
+
+            <div class="section-view" data-section="tasks">
+              <h1>Tasks</h1>
+              <p>Task list will go here...</p>
+            </div>
+
+            <div class="section-view" data-section="tracker">
+              <h1>Time Tracker</h1>
+              <p>Stopwatch will go here...</p>
+            </div>
+
+            <div class="section-view" data-section="notes">
+              <h1>Quick Notes</h1>
+              <p>Textarea will go here...</p>
+            </div>
+
         </div>
     </main>
     </div>

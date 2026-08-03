@@ -7,9 +7,31 @@ const state = {
   trackerSessions: []
 };
 
-// Basic section switching function (to be expanded later)
+// DOM Elements
+const navItems = document.querySelectorAll('.nav-item');
+const sectionViews = document.querySelectorAll('.section-view');
+
+// Core Routing Function
 function switchSection(sectionName) {
-  console.log(`Switching to: ${sectionName}`);
+  // 1. Update state
   state.activeSection = sectionName;
-  // Toggling UI classes will go here
+  
+  // 2. Toggle nav button active states
+  navItems.forEach(item => {
+    item.classList.toggle('active', item.dataset.section === sectionName);
+  });
+  
+  // 3. Toggle view visibility
+  sectionViews.forEach(view => {
+    view.classList.toggle('active', view.dataset.section === sectionName);
+  });
 }
+
+// Event Listeners for Sidebar
+navItems.forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent default anchor link behavior
+    const section = item.dataset.section;
+    switchSection(section);
+  });
+});

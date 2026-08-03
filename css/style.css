@@ -121,6 +121,33 @@ body {
   padding: 2rem 2.5rem 4rem;
 }
 
+.section-view {
+  display: none;
+  flex-direction: column;
+  min-height: calc(100vh - 4rem);
+}
+
+.section-view.active {
+  display: flex;
+  animation: sectionFadeIn 0.3s ease;
+}
+
+@keyframes sectionFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.section-view h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.section-view p {
+  color: var(--muted);
+}
+
 a {
   text-decoration: none;
 }
