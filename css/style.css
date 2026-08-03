@@ -23,13 +23,23 @@
   --info: #5c9bd4;
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+* {
+    scrollbar-color: #3c3c3c var(--bg);
+    scrollbar-width: thin;
+}
+
 body {
   font-family: 'Space Grotesk', sans-serif;
   background-color: var(--bg);
   color: var(--fg);
   min-height: 100vh;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
 }
 
 .layout {
@@ -44,8 +54,7 @@ body {
   flex-shrink: 0;
   background: rgba(13, 13, 13, 0.85);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid var(--border);
+  border-right: 2px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0.75rem;
@@ -58,7 +67,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 6px 1.25rem;
+  padding: 0 0.3rem 1.25rem;
   border-bottom: 2px solid var(--border);
   margin-bottom: 0.75rem;
 }
@@ -78,7 +87,7 @@ body {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25px;
+  gap: 0.25rem;
 }
 
 .nav-item {
@@ -89,8 +98,12 @@ body {
   border-radius: 12px;
   color: var(--muted);
   font-size: 0.88rem;
-  font-weight: 500;
   transition: all 0.2s;
+
+  & i {
+    width: 1rem;
+    text-align: center;
+  }
 }
 
 .nav-item:hover {
@@ -101,11 +114,6 @@ body {
 .nav-item.active {
   color: var(--accent);
   background: var(--item-active);
-}
-
-.nav-item i {
-  width: 1rem;
-  text-align: center;
 }
 
 .main-area {
@@ -146,6 +154,130 @@ body {
 
 .section-view p {
   color: var(--muted);
+}
+
+
+.app-header { 
+  margin-bottom: 2rem; 
+  flex-shrink: 0; 
+}
+.app-header h1 { 
+  font-size: 2.5rem; 
+  font-weight: 700; 
+  letter-spacing: -0.03em; 
+  line-height: 1.1; 
+}
+.app-header p { 
+  margin-top: 0.5rem;
+  font-size: 1rem; 
+  color: var(--muted); 
+}
+
+.calendar-wrapper { 
+  display: flex; 
+  flex-direction: column; 
+  background: var(--card);
+  border-radius: 16px; 
+  padding: 2.5rem;
+}
+
+.calendar-wrapper:first-of-type{
+  padding: 1rem 1.5rem;
+  border-radius: 24px;
+}
+.calendar-header { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+}
+.calendar-month-year { 
+  font-size: 1.6rem; 
+  font-weight: 700; 
+  text-align: center; 
+  flex: 1; 
+  letter-spacing: -0.02em; 
+}
+
+.nav-arrow { 
+  width: 3rem; 
+  height: 3rem; 
+  border-radius: 12px; 
+  border: 2px solid var(--border); 
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 1rem; 
+  transition: all 0.2s; 
+}
+.nav-arrow:hover {
+  border-color: #333; 
+  background: rgba(255,255,255,0.03); 
+}
+
+.calendar-grid { 
+  display: grid; 
+  grid-template-columns: repeat(4, 1fr); 
+  grid-auto-rows: max-content; 
+  gap: 1rem; 
+  align-content: start; 
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.calendar-grid.fade-out {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+
+.calendar-day {
+  display: flex; 
+  flex-direction: column; 
+  align-items: flex-start; 
+  justify-content: flex-start; 
+  border: 2px solid var(--border); 
+  border-radius: 12px;
+  transition: all 0.2s; 
+  position: relative; 
+  background: var(--surface); 
+  padding: 1.5rem; 
+  margin: 0.5rem;
+  overflow: hidden;
+  aspect-ratio: 1.75; 
+}
+.calendar-day:hover {
+  background: var(--item-active);
+  transform: translateY(-2px); 
+}
+.calendar-day.today { 
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 20px rgba(212, 134, 76, 0.15);
+}
+
+.cal-dow {
+  font-size: 0.85rem;;
+  color: var(--muted); 
+  margin-bottom: 0.5rem; 
+  text-transform: uppercase; 
+  letter-spacing: 0.08em; 
+}
+.calendar-day.today .cal-dow { color: var(--accent); }
+
+.cal-date { 
+  font-size: 1.5rem; 
+  font-weight: 700; 
+  line-height: 1; 
+}
+/* Mobile responsiveness for calendar */
+@media (max-width: 768px) {
+  .calendar-wrapper { padding: 1.5rem; }
+  .calendar-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } 
+  .cal-date { font-size: 1.8rem; }
+  .calendar-day { padding: 16px; }
 }
 
 a {

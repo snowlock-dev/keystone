@@ -33,8 +33,19 @@
         <div class="app-container">
 
             <div class="section-view active" data-section="home">
-              <h1>Dashboard</h1>
-              <p>Calendar will go here...</p>
+                <header class="app-header">
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button class="nav-arrow" id="calPrev" aria-label="Previous month"><i class="ph ph-caret-left"></i></button>
+                        <div class="calendar-month-year" id="calMonthYear"></div>
+                        <button class="nav-arrow" id="calNext" aria-label="Next month"><i class="ph ph-caret-right"></i></button>
+                    </div>
+                </div>
+                </header>
+
+                <div class="calendar-wrapper">
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
             </div>
 
             <div class="section-view" data-section="tasks">
