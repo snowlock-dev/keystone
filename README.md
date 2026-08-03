@@ -6,6 +6,7 @@ It tries to combine all of the features I love from different apps/websites, whi
 
 ## Plans
 
+- [x] Make a placeholder `index.html`
 - [ ] Add a good todo section from scratch
 - [ ] Add a guideplan section
 - [ ] Add a timelog section with charts & graphs
