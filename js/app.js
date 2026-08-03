@@ -105,7 +105,7 @@ window.addEventListener('keydown', (event) => {
 
 // this is more modular, because I plan to add a few more shortcuts later
 window.addEventListener('keydown', (event) => {
-  const isModifierPressed = event.metaKey;
+  const isModifierPressed = event.metaKey || event.ctrlKey;
 
   if (isModifierPressed) {
     const shortcuts = {

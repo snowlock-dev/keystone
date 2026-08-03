@@ -12,7 +12,7 @@
   --card: rgba(17, 17, 17, 0.9);
   --border: #1c1c1c;
   --fg: #eaeaea;
-  --muted: #555555;
+  --muted: #6b6b6b;
 
   --accent: #d4864c;
   --item-active: rgba(212, 134, 76, 0.1);
@@ -98,6 +98,15 @@ body::before {
   gap: 0.25rem;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -122,15 +131,6 @@ body::before {
 .nav-item.active {
   color: var(--accent);
   background: var(--item-active);
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 1rem 1.25rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  border-top: 1px solid var(--border);
 }
 
 .main-area {
