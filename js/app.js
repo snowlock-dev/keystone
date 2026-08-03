@@ -95,17 +95,9 @@ renderCalendar();
 calPrev.addEventListener('click', () => navigateCalendar(-1));
 calNext.addEventListener('click', () => navigateCalendar(1));
 
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowLeft') {
-    navigateCalendar(-1);
-  } else if (event.key === 'ArrowRight') {
-    navigateCalendar(1);
-  }
-});
-
 // this is more modular, because I plan to add a few more shortcuts later
 window.addEventListener('keydown', (event) => {
-  const isModifierPressed = event.metaKey || event.ctrlKey;
+  const isModifierPressed = event.ctrlKey || event.metaKey;
 
   if (isModifierPressed) {
     const shortcuts = {
@@ -121,7 +113,6 @@ window.addEventListener('keydown', (event) => {
     }
   }
 
-  // Existing Calendar Arrow Key Logic
   if (event.key === 'ArrowLeft') {
     navigateCalendar(-1);
   } else if (event.key === 'ArrowRight') {
