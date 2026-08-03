@@ -116,6 +116,15 @@ body {
   background: var(--item-active);
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 1.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
 .main-area {
   flex: 1;
   min-width: 0;

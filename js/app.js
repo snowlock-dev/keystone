@@ -102,3 +102,29 @@ window.addEventListener('keydown', (event) => {
     navigateCalendar(1);
   }
 });
+
+// this is more modular, because I plan to add a few more shortcuts later
+window.addEventListener('keydown', (event) => {
+  const isModifierPressed = event.ctrlKey;
+
+  if (isModifierPressed) {
+    const shortcuts = {
+      '1': 'home',
+      '2': 'tasks',
+      '3': 'tracker',
+      '4': 'notes'
+    };
+
+    if (shortcuts[event.key]) {
+      event.preventDefault();
+      switchSection(shortcuts[event.key]);
+    }
+  }
+
+  // Existing Calendar Arrow Key Logic
+  if (event.key === 'ArrowLeft') {
+    navigateCalendar(-1);
+  } else if (event.key === 'ArrowRight') {
+    navigateCalendar(1);
+  }
+});
