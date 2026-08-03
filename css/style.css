@@ -39,7 +39,8 @@ body {
 }
 
 .sidebar {
-  width: 15rem;
+  width: 30vw;
+  max-width: 15rem;
   flex-shrink: 0;
   background: rgba(13, 13, 13, 0.85);
   backdrop-filter: blur(20px);
