@@ -206,3 +206,103 @@ importFileInput.addEventListener('change', (e) => {
     e.target.value = ''; // Reset input
   }
 });
+
+
+// === Notes Logic ===
+const notesInput = document.getElementById('notesInput');
+const notesSaveIndicator = document.getElementById('notesSaveIndicator');
+const notesCount = document.getElementById('notesCount');
+const notesClearBtn = document.getElementById('notesClearBtn');
+
+let notesSaveTimeout = 2;
+
+function loadNotes() {
+  notesInput.value = localStorage.getItem(STORAGE_PREFIX + 'notes') || '';
+  updateNotesCount();
+}
+
+function saveNotes() {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + 'notes', notesInput.value);
+    notesSaveIndicator.textContent = 'All changes saved';
+    notesSaveIndicator.classList.remove('saving');
+  } catch (e) {
+    notesSaveIndicator.textContent = 'Save failed';
+    notesSaveIndicator.classList.add('saving');
+  }
+}
+
+function handleNotesChange() {
+  // Show saving indicator immediately
+  notesSaveIndicator.textContent = 'Saving...';
+  notesSaveIndicator.classList.add('saving');
+  
+  // Debounce the actual save by 500ms
+  clearTimeout(notesSaveTimeout);
+  notesSaveTimeout = setTimeout(saveNotes, 500);
+  
+  updateNotesCount();
+}
+
+function updateNotesCount() {
+  const text = notesInput.value;
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars = text.length;
+  notesCount.textContent = words + ' word' + (words !== 1 ? 's' : '') + ' · ' + chars + ' char' + (chars !== 1 ? 's' : '');
+}
+
+// 2-click confirmation to clear
+let notesClearConfirm = false;
+let notesClearTimeout = null;
+
+function handleNotesClear() {
+  if (!notesInput.value.trim()) return;
+  
+  if (!notesClearConfirm) {
+    // FIRST CLICK: Turn into checkmark, wait for second click
+    notesClearConfirm = true;
+    notesClearBtn.classList.add('confirm');
+    showToast('Are you sure? (Click Again to Confirm', 'neutral');
+    notesClearBtn.innerHTML = '<i class="ph-fill ph-check-fat"></i>';
+    clearTimeout(notesClearTimeout);
+    notesClearTimeout = setTimeout(() => {
+      // If they wait too long, turn back into a trashcan
+      notesClearConfirm = false;
+      notesClearBtn.classList.remove('confirm');
+      notesClearBtn.innerHTML = '<i class="ph ph-trash"></i>';
+    }, 3000);
+    return;
+  }
+  
+  // SECOND CLICK: Actually delete
+  clearTimeout(notesClearTimeout);
+  notesClearConfirm = false;
+  notesClearBtn.classList.remove('confirm');
+  notesClearBtn.innerHTML = '<i class="ph ph-trash"></i>';
+  notesInput.value = '';
+  localStorage.removeItem(STORAGE_PREFIX + 'notes');
+  
+  // Update UI
+  notesSaveIndicator.textContent = 'All changes saved';
+  notesSaveIndicator.classList.remove('saving');
+  updateNotesCount();
+  showToast('Notes cleared', 'success');
+}
+
+// Event Listeners
+notesInput.addEventListener('input', handleNotesChange);
+notesClearBtn.addEventListener('click', handleNotesClear);
+
+// Tab key indent inside textarea
+notesInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    var start = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 2;
+    handleNotesChange();
+  }
+});
+
+// Initialize Notes on load
+loadNotes();

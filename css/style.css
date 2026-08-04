@@ -7,7 +7,7 @@
 }
 
 :root {
-  --bg: rgba(5, 5, 5, 0.9);
+  --bg: rgba(5, 5, 5, 0.95);
   --surface: rgba(15, 15, 15, 0.9);
   --card: rgba(17, 17, 17, 0.9);
   --border: #1c1c1c;
@@ -53,6 +53,14 @@ body::before {
   z-index: -1;
 }
 
+
+.a-arrow {
+  color: var(--muted);
+  display: inline-block;
+  font-size: 0.75em;
+  line-height: 1;
+}
+
 .layout {
   display: flex;
   min-height: 100vh;
@@ -63,8 +71,7 @@ body::before {
   width: 30vw;
   max-width: 15rem;
   flex-shrink: 0;
-  backdrop-filter: blur(20px);
-  border-right: 2px solid var(--border);
+  background-color: var(--bg);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0.75rem;
@@ -387,9 +394,102 @@ body::before {
   .calendar-day { padding: 16px; }
 }
 
-.a-arrow {
+
+.notes-wrapper {
+  background: var(--card);
+  border: 2px solid var(--card);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.3s;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.notes-wrapper:focus-within {
+  border: 2px solid var(--border);
+}
+
+.notes-toolbar { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 0.75rem 1rem; 
+  border-bottom: 2px solid var(--border); 
+  background: var(--surface); 
+}
+.notes-save-indicator { 
+  font-size: 0.75rem; 
   color: var(--muted);
-  display: inline-block;
-  font-size: 0.75em;
-  line-height: 1;
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+}
+
+.notes-save-indicator::before { 
+  content: ''; 
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%; 
+  background: var(--success); 
+  transition: background 0.2s; 
+}
+.notes-save-indicator.saving::before { 
+  background: var(--danger); 
+  animation: pulse-dot-simple 1s ease-in-out infinite; 
+}
+@keyframes pulse-dot-simple { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+.notes-toolbar-right { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+}
+
+.notes-count { 
+  font-size: 0.72rem; 
+  color: var(--muted); 
+}
+
+.notes-clear-btn { 
+  width: 2rem; 
+  height: 2rem; 
+  border-radius: 12px; 
+  border: 2px solid var(--border); 
+  background: transparent; 
+  color: var(--muted); 
+  cursor: pointer; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 0.75rem; 
+  transition: all 0.2s; 
+}
+.notes-clear-btn:hover { 
+  color: var(--fg); 
+  border-color: #333; 
+}
+.notes-clear-btn.confirm { 
+  color: var(--danger); 
+  border-color: var(--danger); 
+}
+
+.notes-input {
+  width:100%;
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--fg);
+  resize: none;
+  display: block;
+  min-height: 300px;
+}
+
+.notes-input::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
 }
