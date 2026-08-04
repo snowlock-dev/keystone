@@ -27,11 +27,12 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  scrollbar-color: #3c3c3c var(--bg);
+  scrollbar-width: thin;
 }
 
-* {
-    scrollbar-color: #3c3c3c var(--bg);
-    scrollbar-width: thin;
+::selection {
+  background: var(--accent-glow);
 }
 
 body {
@@ -47,10 +48,11 @@ body::before {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: #1a1a1a url('../assets/wallpaper.jpg') center / cover no-repeat;
+  background: var(--bg) url('../assets/wallpaper.jpg') center / cover no-repeat;
   pointer-events: none;
   z-index: -1;
 }
+
 .layout {
   display: flex;
   min-height: 100vh;
@@ -83,13 +85,21 @@ body::before {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1rem;
-  font-weight: 700;
+  gap: 1rem;
+  letter-spacing: 0.05rem;
+  font-size: 1.2rem;
+  font-weight: bold;
 }
 
 .brand i {
   color: var(--accent);
+}
+
+.brand a {
+  color: var(--fg);
+  text-underline-offset: 0.35rem;
+  text-decoration: underline dashed var(--accent) 1px;
+
 }
 
 .sidebar-nav {
@@ -111,16 +121,18 @@ body::before {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
+  padding: 1rem 0.75rem;
   border-radius: 12px;
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 1rem;
   transition: all 0.2s;
+  text-decoration: none !important;
 
   & i {
     width: 1rem;
     text-align: center;
   }
+
 }
 
 .nav-item:hover {
@@ -297,6 +309,9 @@ body::before {
   .calendar-day { padding: 16px; }
 }
 
-a {
-  text-decoration: none;
+.a-arrow {
+  color: var(--muted);
+  display: inline-block;
+  font-size: 0.75em;
+  line-height: 1;
 }

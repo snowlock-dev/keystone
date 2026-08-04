@@ -17,4 +17,4 @@ It tries to combine all of the features I love from different apps/websites, whi
 
 ## Credits
 
-* `assets/wallpaper.jpg` from: [Wallhaven](https://wallhaven.cc/w/yqekql)
+* `assets/wallpaper.jpg`(Default Wallpaper) from: [Wallhaven](https://wallhaven.cc/w/nm6o2k)
