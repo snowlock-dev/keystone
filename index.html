@@ -15,6 +15,10 @@
 
 
 <body>
+
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div> <!-- Toast Container -->  
+    <input type="file" id="importFileInput" accept=".json" style="display: none;"> <!--hidden file input-->
+
     <div class="layout">
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -35,7 +39,17 @@
         </nav>
 
         <div class="sidebar-footer">
-            <p> <i class="ph ph-command"></i> Meta / Ctrl + 1/2/3/4 to travel</p>
+            <div class="footer-actions">
+                <button class="footer-btn" id="exportBtn" title="Export JSON">
+                    <i class="ph ph-file-arrow-up"></i>
+                </button>
+                
+                <button class="footer-btn" id="importBtn" title="Import JSON">
+                    <i class="ph ph-file-arrow-down"></i>
+                </button>
+            </div>
+
+            <p><i class="ph ph-command"></i> Meta / Ctrl + 1/2/3/4</p>
         </div>
     </aside>
 

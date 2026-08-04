@@ -119,3 +119,90 @@ window.addEventListener('keydown', (event) => {
     navigateCalendar(1);
   }
 });
+
+
+const STORAGE_PREFIX = 'keystone0.1_';
+const toastContainer = document.getElementById('toastContainer');
+
+function showToast(message, state = 'neutral') {
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + state;
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// === Backup & Restore Pipeline ===
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFileInput = document.getElementById('importFileInput');
+
+function exportData() {
+  const data = { app: "Keystone", version: "0.1", localStorage: {} };
+  
+  // Grab only keystone_ items
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_PREFIX)) {
+      data.localStorage[key] = localStorage.getItem(key);
+    }
+  }
+  
+  // Download as keystone.json
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url; 
+  a.download = "keystone.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast("Backup exported to keystone.json!", "success");
+}
+
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.json')) {
+    showToast("Please select a keystone.json file", "error");
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (parsed && parsed.localStorage) {
+        // Inject into localStorage
+        Object.keys(parsed.localStorage).forEach(function(key) {
+          if (key.startsWith(STORAGE_PREFIX)) {
+            localStorage.setItem(key, parsed.localStorage[key]);
+          }
+        });
+        showToast("keystone.json loaded! Reloading app...", "success");
+        setTimeout(() => location.reload(), 1000); // this is iffy
+      } else {
+        showToast("Invalid backup format", "error");
+      }
+    } catch (err) {
+      showToast("Error reading JSON file", "error");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Wire up the buttons
+exportBtn.addEventListener('click', exportData);
+importBtn.addEventListener('click', () => importFileInput.click());
+importFileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    handleFile(e.target.files[0]);
+    e.target.value = ''; // Reset input
+  }
+});
