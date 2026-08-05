@@ -744,7 +744,7 @@ DOM.startBtn.addEventListener('click', () => {
 
 DOM.endBtn.addEventListener('click', () => {
   const duration = getActiveElapsedSec();
-  if (duration > 5) {
+  if (duration > 60) {
     const now   = new Date();
     const start = new Date(now.getTime() - duration * 1000);
     Storage.addSession({
