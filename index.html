@@ -1,115 +1,276 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keystone</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keystone</title>
   
-    <link rel="preload" href="assets/SpaceGrotesk-VariableFont.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="css/style.css" as="style">
-    <link rel="preload" href="assets/wallpaper.jpg" as="image">
+  <link rel="preload" href="assets/SpaceGrotesk-VariableFont.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="css/style.css" as="style">
+  <link rel="preload" href="assets/wallpaper.jpg" as="image">
 
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 
 <body>
 
-    <div class="toast-container" id="toastContainer" aria-live="polite"></div> <!-- Toast Container -->  
-    <input type="file" id="importFileInput" accept=".json" style="display: none;"> <!--hidden file input-->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div> <!-- Toast Container -->  
+  <input type="file" id="importFileInput" accept=".json" style="display: none;"> <!--hidden file input-->
 
-    <div class="layout">
+  <div class="layout">
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="brand">
-                <i class="ph-fill ph-nut"></i>
-                <a class="brand" href="https://github.com/snowlock-dev/keystone" target="_blank" rel="noopener noreferrer">
-                    <span>Keystone</span> 
-                </a>
-                <span class="a-arrow">↗</span>
-            </div>
+      <div class="sidebar-header">
+        <div class="brand">
+          <i class="ph-fill ph-nut"></i>
+          <a class="brand" href="https://github.com/snowlock-dev/keystone" target="_blank" rel="noopener noreferrer">
+            <span>Keystone</span> 
+          </a>
+          <span class="a-arrow">↗</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="home"><i class="ph-fill ph-house"></i> <span>Home</span></a>
+        <a href="#" class="nav-item" data-section="tasks"><i class="ph-fill ph-check-square-offset"></i> <span>Tasks</span></a>
+        <a href="#" class="nav-item" data-section="tracker"><i class="ph-fill ph-timer"></i> <span>Tracker</span></a>
+        <a href="#" class="nav-item" data-section="notes"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="footer-actions">
+          <button class="footer-btn" id="exportBtn" title="Export JSON">
+            <i class="ph ph-file-arrow-up"></i>
+          </button>
+          
+          <button class="footer-btn" id="importBtn" title="Import JSON">
+            <i class="ph ph-file-arrow-down"></i>
+          </button>
         </div>
 
-        <nav class="sidebar-nav">
-            <a href="#" class="nav-item active" data-section="home"><i class="ph-fill ph-house"></i> <span>Home</span></a>
-            <a href="#" class="nav-item" data-section="tasks"><i class="ph-fill ph-check-square-offset"></i> <span>Tasks</span></a>
-            <a href="#" class="nav-item" data-section="tracker"><i class="ph-fill ph-timer"></i> <span>Tracker</span></a>
-            <a href="#" class="nav-item" data-section="notes"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="footer-actions">
-                <button class="footer-btn" id="exportBtn" title="Export JSON">
-                    <i class="ph ph-file-arrow-up"></i>
-                </button>
-                
-                <button class="footer-btn" id="importBtn" title="Import JSON">
-                    <i class="ph ph-file-arrow-down"></i>
-                </button>
-            </div>
-
-            <p><i class="ph ph-command"></i> Meta / Ctrl + 1/2/3/4</p>
-        </div>
+        <p><i class="ph ph-command"></i> Meta / Ctrl + 1/2/3/4</p>
+      </div>
     </aside>
 
-
     <main class="main-area">
-        <div class="app-container">
+      <div class="app-container">
 
-            <div class="section-view active" data-section="home">
-                <header class="app-header">
-                <div class="calendar-wrapper">
-                    <div class="calendar-header">
-                        <button class="nav-arrow" id="calPrev" aria-label="Previous month"><i class="ph ph-caret-left"></i></button>
-                        <div class="calendar-month-year" id="calMonthYear"></div>
-                        <button class="nav-arrow" id="calNext" aria-label="Next month"><i class="ph ph-caret-right"></i></button>
-                    </div>
-                </div>
-                </header>
-
-                <div class="calendar-wrapper">
-                    <div class="calendar-grid" id="calendarGrid"></div>
-                </div>
+        <div class="section-view active" data-section="home">
+          <header class="app-header">
+            <div class="calendar-wrapper">
+              <div class="calendar-header">
+                <button class="nav-arrow" id="calPrev" aria-label="Previous month"><i class="ph ph-caret-left"></i></button>
+                <div class="calendar-month-year" id="calMonthYear"></div>
+                <button class="nav-arrow" id="calNext" aria-label="Next month"><i class="ph ph-caret-right"></i></button>
+              </div>
             </div>
+          </header>
 
-            <div class="section-view" data-section="tasks">
-              <h1>Tasks</h1>
-              <p>Task list will go here...</p>
-            </div>
-
-            <div class="section-view" data-section="tracker">
-              <h1>Time Tracker</h1>
-              <p>Stopwatch will go here...</p>
-            </div>
-
-            <div class="section-view" data-section="notes">
-                <header class="app-header">
-                    <h1>Quick Notes</h1>
-                    <p>Jot down anything; saved automatically</p>
-                </header>
-            
-                <div class="notes-wrapper">
-                  <div class="notes-toolbar">
-                    <span class="notes-save-indicator" id="notesSaveIndicator">All changes saved</span>
-                    <div class="notes-toolbar-right">
-                        <span class="notes-count" id="notesCount">0 words</span>
-                        <button class="notes-clear-btn" id="notesClearBtn" title="Clear notes" aria-label="Clear all notes">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                    <textarea id="notesInput" class="notes-input" placeholder="Start typing your notes here..." aria-label="Notes content"></textarea>
-                </div>
-
-            </div>
-
-            </div>
-
+          <div class="calendar-wrapper">
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
         </div>
-    </main>
-    </div>
 
-    <script src="js/app.js" defer></script>
+        <div class="section-view" data-section="tasks">
+          <h1>Tasks</h1>
+          <p>Task list will go here...</p>
+        </div>
+
+        <!-- TRACKER VIEW -->
+        <div class="section-view" data-section="tracker">
+          <header class="app-header">
+            <h1>Time Tracker</h1>
+            <p>Log study time & improve your study</p>
+          </header>
+
+          <!-- CARD 1: Timer -->
+          <div class="tracker-panel control-panel">
+            <div class="timer-top-row">
+              <div class="form-group">
+                <label class="form-label" for="subjectSelect">Select Subject</label>
+                <select id="subjectSelect" class="form-select">
+                  <option value="physics">Physics</option>
+                  <option value="chem">Chemistry</option>
+                  <option value="maths">Maths</option>
+                  <option value="mock">Mock Tests</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1; max-width: 400px;">
+                <label class="form-label" for="sessionDesc">Session Description (Optional)</label>
+                <input type="text" id="sessionDesc" class="form-input" placeholder="e.g., Kinematics practice" maxlength="100">
+              </div>
+            </div>
+
+            <div>
+              <div class="active-timer-display" id="activeTimerDisplay">00:00:00</div>
+              <div class="timer-buttons">
+                <button class="timer-btn start" id="startBtn" aria-label="Start/Resume"><i class="ph-fill ph-play"></i></button>
+                <button class="timer-btn end" id="endBtn" disabled aria-label="End session"><i class="ph-fill ph-stop"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STATS CARDS (Full Width Row) -->
+          <div class="stats-cards">
+            <div class="stat-card">
+              <div class="stat-icon"><i class="ph-fill ph-trophy"></i></div>
+              <div class="stat-label">Max Hrs/Day</div>
+              <div class="stat-value" id="statMaxDay">0h 0m</div>
+              <div class="stat-sub">Last 7 days</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="ph-fill ph-hourglass-medium"></i></div>
+              <div class="stat-label">Avg Session</div>
+              <div class="stat-value" id="statAvgSession">0m</div>
+              <div class="stat-sub">Last 30 days</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="ph-fill ph-calendar-check"></i></div>
+              <div class="stat-label">Daily Avg</div>
+              <div class="stat-value" id="statAvgHrsDay">0h 0m</div>
+              <div class="stat-sub">Last 7 days</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon"><i class="ph-fill ph-fire"></i></div>
+              <div class="stat-label">Time Streak</div>
+              <div class="stat-value" id="statTimeStreak">0 days</div>
+              <div class="stat-sub">Consecutive days</div>
+            </div>
+          </div>
+
+          <!-- GRAPH CARDS (Side by Side) -->
+          <div class="tracker-grid">
+            <!-- CARD 3: Graphs (Pie) -->
+            <div class="tracker-panel">
+              <h2 class="panel-title">Last 7 Days Breakdown</h2>
+              <div class="chart-container pie-chart-wrapper">
+                <svg id="pieChart" class="chart-svg" viewBox="0 0 200 200" style="max-width: 180px;"></svg>
+                <div class="pie-center-text">
+                  <div class="pie-center-value" id="pieTotal">0h</div>
+                </div>
+                <div class="pie-legend" id="pieLegend"></div>
+              </div>
+            </div>
+            
+            <!-- CARD 3b: Graphs (Bar) -->
+            <div class="tracker-panel">
+              <h2 class="panel-title">Daily Time (Stacked)</h2>
+              <div class="chart-container">
+                <svg id="barChart" class="chart-svg" viewBox="0 0 400 200" preserveAspectRatio="none"></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD 4: Daily Goals & Questions -->
+          <div class="tracker-panel goals-panel">
+            <h2 class="panel-title">Daily Goals & Questions</h2>
+            <div class="goals-grid">
+              <!-- Time Goal -->
+              <div class="goal-box">
+                <label class="form-label">Daily Time Goal</label>
+                <div class="goal-input-group">
+                  <input type="number" id="goalHours" class="form-input" min="0" max="24" value="4">
+                  <span class="goal-unit">hr</span>
+                  <input type="number" id="goalMinutes" class="form-input" min="0" max="59" value="0">
+                  <span class="goal-unit">min</span>
+                </div>
+                <div class="goal-progress-text" id="timeGoalText">0m / 4h 0m</div>
+              </div>
+
+              <!-- Questions Goal -->
+              <div class="goal-box">
+                <label class="form-label">Daily Questions Goal</label>
+                <input type="number" id="questionsGoal" class="form-input" min="0" value="100" style="max-width: 100px; margin: 0 auto;">
+                <div class="goal-progress-text" id="questionsGoalText">0 / 100</div>
+              </div>
+
+              <!-- Subject Question Inputs -->
+              <div class="goal-box subject-questions-box">
+                <label class="form-label">Questions by Subject</label>
+                <div class="subject-input-row">
+                  <span>Physics</span>
+                  <input type="number" id="qPhy" class="form-input" min="0" value="0">
+                </div>
+                <div class="subject-input-row">
+                  <span>Chemistry</span>
+                  <input type="number" id="qChem" class="form-input" min="0" value="0">
+                </div>
+                <div class="subject-input-row">
+                  <span>Maths</span>
+                  <input type="number" id="qMaths" class="form-input" min="0" value="0">
+                </div>
+              </div>
+            </div>
+            <div class="streak-display">
+              Question Streak: <strong id="statQuestionStreak">0 days</strong>
+            </div>
+          </div>
+
+          <!-- SESSION LOG -->
+          <div class="tracker-panel" style="margin-top: 1.25rem;">
+            <div class="panel-header-row">
+              <h2 class="panel-title" style="margin-bottom: 0;">Today's Sessions</h2>
+              <button class="add-session-btn" id="openModalBtn"><i class="ph ph-plus"></i> Add Session</button>
+            </div>
+            <div class="log-list" id="sessionLog"></div>
+          </div>
+        </div>
+
+        <!-- ADD SESSION MODAL -->
+        <div class="modal-overlay" id="sessionModal">
+          <div class="modal-card">
+            <h3>Add Manual Session</h3>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label" for="modalSubject">Subject</label>
+                <select id="modalSubject" class="form-select">
+                  <option value="physics">Physics</option>
+                  <option value="chem">Chemistry</option>
+                  <option value="maths">Maths</option>
+                  <option value="mock">Mock Tests</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="modalDuration">Duration (minutes)</label>
+                <input type="number" id="modalDuration" class="form-input" min="1" value="30">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="modalDesc">Description</label>
+                <input type="text" id="modalDesc" class="form-input" placeholder="e.g., Mock Test Review">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="modal-btn discard" id="discardModalBtn">Discard</button>
+              <button class="modal-btn save" id="saveModalBtn">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUICK NOTES VIEW -->
+        <div class="section-view" data-section="notes">
+          <header class="app-header">
+            <h1>Quick Notes</h1>
+            <p>Jot down anything; saved automatically</p>
+          </header>
+      
+          <div class="notes-wrapper">
+            <div class="notes-toolbar">
+              <span class="notes-save-indicator" id="notesSaveIndicator">All changes saved</span>
+              <div class="notes-toolbar-right">
+                <span class="notes-count" id="notesCount">0 words</span>
+                <button class="notes-clear-btn" id="notesClearBtn" title="Clear notes" aria-label="Clear all notes">
+                  <i class="ph ph-trash"></i>
+                </button>
+              </div>
+            </div>
+            <textarea id="notesInput" class="notes-input" placeholder="Start typing your notes here..." aria-label="Notes content"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js" defer></script>
 </body>
 </html>

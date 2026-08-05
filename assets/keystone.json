@@ -2,6 +2,20 @@
   "app": "Keystone",
   "version": "0.1",
   "localStorage": {
-    "keystone0.1_guideplan": ""
+    "keystone0.1_sessions": "[]",
+    "keystonequestions_Wed Jul 29 2026": "{\"phy\": 20, \"chem\": 10, \"maths\": 20}",
+    "keystonequestions_Tue Aug 04 2026": "{\"phy\": 20, \"chem\": 15, \"maths\": 15}",
+    "keystone0.1_guideplan": "",
+    "keystone0.1_goals": "{\"hours\":4,\"minutes\":0,\"questions\":100}",
+    "keystonenotes": "hello keystone!",
+    "keystonequestions_Sun Aug 02 2026": "{\"phy\": 15, \"chem\": 20, \"maths\": 15}",
+    "keystonesessions": "[{\"id\": \"wdpbmai0\", \"subject\": \"physics\", \"description\": \"Electromagnetism lecture review and homework\", \"startTs\": 1785904200000, \"endTs\": 1785909600000, \"duration\": 5400}, {\"id\": \"gg9tm8dt\", \"subject\": \"maths\", \"description\": \"Mock exam prep - calculus problems\", \"startTs\": 1785918600000, \"endTs\": 1785924000000, \"duration\": 5400}, {\"id\": \"ww0j917u\", \"subject\": \"chem\", \"description\": \"Organic chemistry reaction mechanisms study\", \"startTs\": 1785933000000, \"endTs\": 1785937500000, \"duration\": 4500}, {\"id\": \"tremfr77\", \"subject\": \"chem\", \"description\": \"Organic chemistry mechanism walkthroughs\", \"startTs\": 1785816000000, \"endTs\": 1785823200000, \"duration\": 7200}, {\"id\": \"brhawtrx\", \"subject\": \"maths\", \"description\": \"Trig identities practice and formulas memorization\", \"startTs\": 1785835800000, \"endTs\": 1785841200000, \"duration\": 5400}, {\"id\": \"rdgl0evy\", \"subject\": \"mock\", \"description\": \"Full length mock exam #3\", \"startTs\": 1785731400000, \"endTs\": 1785742200000, \"duration\": 10800}, {\"id\": \"n0ihvu5y\", \"subject\": \"physics\", \"description\": \"Momentum and center of mass derivations\", \"startTs\": 1785753000000, \"endTs\": 1785756600000, \"duration\": 3600}, {\"id\": \"j0v0uklm\", \"subject\": \"maths\", \"description\": \"Definite integration techniques practice\", \"startTs\": 1785648600000, \"endTs\": 1785654000000, \"duration\": 5400}, {\"id\": \"0mexbqek\", \"subject\": \"chem\", \"description\": \"Inorganic trends flashcards and d-block notes\", \"startTs\": 1785663000000, \"endTs\": 1785667500000, \"duration\": 4500}, {\"id\": \"ag41wn0l\", \"subject\": \"physics\", \"description\": \"Rotational dynamics - torque and inertia\", \"startTs\": 1785558600000, \"endTs\": 1785565800000, \"duration\": 7200}, {\"id\": \"mxgjkg7e\", \"subject\": \"maths\", \"description\": \"Coordinate geometry circles and conic sections\", \"startTs\": 1785573000000, \"endTs\": 1785580200000, \"duration\": 7200}, {\"id\": \"50mkw1cr\", \"subject\": \"chem\", \"description\": \"Chemical bonding and molecular structure notes\", \"startTs\": 1785468600000, \"endTs\": 1785475800000, \"duration\": 7200}, {\"id\": \"m6s7m6qw\", \"subject\": \"mock\", \"description\": \"Sectional test on physics mechanics\", \"startTs\": 1785486600000, \"endTs\": 1785492000000, \"duration\": 5400}, {\"id\": \"8ny2omb1\", \"subject\": \"physics\", \"description\": \"Thermodynamics first law problems\", \"startTs\": 1785389400000, \"endTs\": 1785394800000, \"duration\": 5400}, {\"id\": \"w5asq2ir\", \"subject\": \"chem\", \"description\": \"Periodic classification trends worksheet\", \"startTs\": 1785407400000, \"endTs\": 1785411900000, \"duration\": 4500}, {\"id\": \"v4vsjyj9\", \"subject\": \"maths\", \"description\": \"Vector algebra and 3D lines worksheets\", \"startTs\": 1785299400000, \"endTs\": 1785306600000, \"duration\": 7200}, {\"id\": \"mmwdubpw\", \"subject\": \"physics\", \"description\": \"Electrostatic potentials and field lines\", \"startTs\": 1785315600000, \"endTs\": 1785321000000, \"duration\": 5400}]",
+    "keystone0.1_questions_Wed Aug 05 2026": "{\"phy\":0,\"chem\":0,\"maths\":0}",
+    "keystonequestions_Wed Aug 05 2026": "{\"phy\": 15, \"chem\": 10, \"maths\": 25}",
+    "keystonequestions_Thu Jul 30 2026": "{\"phy\": 15, \"chem\": 15, \"maths\": 15}",
+    "keystonequestions_Sat Aug 01 2026": "{\"phy\": 25, \"chem\": 10, \"maths\": 20}",
+    "keystonequestions_Mon Aug 03 2026": "{\"phy\": 10, \"chem\": 10, \"maths\": 30}",
+    "keystonegoals": "{\"hours\": 4, \"minutes\": 30, \"questions\": 45}",
+    "keystonequestions_Fri Jul 31 2026": "{\"phy\": 12, \"chem\": 18, \"maths\": 15}"
   }
 }
