@@ -19,7 +19,7 @@ const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const KEYBOARD_SHORTCUTS = {
   '1':'home', 
-  '2':'tasks', 
+  '2':'taskflow', 
   '3':'tracker', 
   '4':'notes'
 };
@@ -134,13 +134,24 @@ const Storage = {
   _ensureDay(date) {
     const key  = dayKey(date);
     const days = this.read().tracker.days;
-    if (!days[key]) days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS } };
+    if (!days[key]) days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS }, todos: [] };
+    if (!days[key].todos) days[key].todos = [];
 
     return days[key];
   },
 
   dayExists(date) {
     return !!this.read().tracker.days[dayKey(date)];
+  },
+
+  // -- Todos/Tasks ------
+  getTodos(date) {
+    return this._ensureDay(date).todos || [];
+  },
+
+  setTodos(date, todos) {
+    this._ensureDay(date).todos = todos;
+    this.write();
   },
 
   getQuestions(date) {
@@ -214,6 +225,22 @@ const DOM = {
   exportBtn:       $('exportBtn'),
   importBtn:       $('importBtn'),
   importFileInput: $('importFileInput'),
+
+  // Taskflow
+  todoInput:          $('todoInput'),
+  addBtn:             $('addBtn'),
+  todoList:           $('todoList'),
+  statsBar:           $('statsBar'),
+  activeCountEl:      $('activeCount'),
+  progressSection:    $('progressSection'),
+  progressFill:       $('progressFill'),
+  progressPct:        $('progressPct'),
+  clearCompletedBtn:  $('clearCompletedBtn'),
+  dayNameEl:          $('dayName'),
+  dayDateEl:          $('dayDate'),
+  todayChip:          $('todayChip'),
+  contentArea:        $('contentArea'),
+  filterTabs:         document.querySelectorAll('.filter-tab'),
 
   // Time tracker
   subjectSelect:      $('subjectSelect'),
@@ -972,12 +999,476 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Arrow keys -> calendar navigation
+  // Arrow keys -> calendar navigation / day navigation
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-  if (e.key === 'ArrowLeft')  navigateCalendar(-1);
-  if (e.key === 'ArrowRight') navigateCalendar(1);
+  if (e.key === 'ArrowLeft') {
+    if (activeSection === 'taskflow') {
+      tfNavigateDay(-1);
+    } else {
+      navigateCalendar(-1);
+    }
+  }
+  if (e.key === 'ArrowRight') {
+    if (activeSection === 'taskflow') {
+      tfNavigateDay(1);
+    } else {
+      navigateCalendar(1);
+    }
+  }
+
+  if (e.key === '/' && activeSection === 'taskflow' && !tfEditingId) {
+    e.preventDefault();
+    DOM.todoInput.focus();
+  }
 });
 
 renderAll();
+
+
+// =============================================================
+// TASKFLOW FRONTEND LOGIC (from taskflow.html)
+// =============================================================
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// --- SOUND EFFECTS --- //
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playCompletionSfx() {
+  try {
+    const ctx = getAudioCtx();
+    const t = ctx.currentTime;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    osc1.frequency.setValueAtTime(587.33, t);
+    osc2.frequency.setValueAtTime(880, t);
+    osc1.frequency.exponentialRampToValueAtTime(587.33, t + 0.15);
+    osc2.frequency.exponentialRampToValueAtTime(1174.66, t + 0.12);
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t + 0.28);
+    osc2.stop(t + 0.28);
+  } catch (e) {}
+}
+
+function play100Sfx() {
+  try {
+    const ctx = getAudioCtx();
+    const t = ctx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      const start = t + i * 0.12;
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.32);
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+  } catch (e) {}
+}
+
+// --- STATE --- //
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+let tfTodos = [];
+let tfCurrentFilter = 'all';
+let tfEditingId = null;
+let tfSelectedYear = 0;
+let tfSelectedMonth = 0;
+let tfSelectedDay = 1;
+let tfIsTransitioning = false;
+
+function tfSelectedDate() {
+  return new Date(tfSelectedYear, tfSelectedMonth, tfSelectedDay);
+}
+
+function tfIsToday() {
+  const now = new Date();
+  return tfSelectedYear === now.getFullYear() &&
+         tfSelectedMonth === now.getMonth() &&
+         tfSelectedDay === now.getDate();
+}
+
+function tfGetOrdinalSuffix(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+function tfNavigateDay(delta) {
+  if (tfIsTransitioning) return;
+
+  const d = new Date(tfSelectedYear, tfSelectedMonth, tfSelectedDay + delta);
+  tfSelectedYear = d.getFullYear();
+  tfSelectedMonth = d.getMonth();
+  tfSelectedDay = d.getDate();
+
+  tfSwitchDay();
+}
+
+function tfGoToToday() {
+  if (tfIsTransitioning || tfIsToday()) return;
+
+  const now = new Date();
+  tfSelectedYear = now.getFullYear();
+  tfSelectedMonth = now.getMonth();
+  tfSelectedDay = now.getDate();
+
+  tfSwitchDay();
+}
+
+function tfSwitchDay() {
+  if (tfIsTransitioning) return;
+  tfIsTransitioning = true;
+
+  let finished = false;
+
+  const finishTransition = () => {
+    if (finished) return;
+    finished = true;
+
+    tfLoadTodos();
+    tfEditingId = null;
+    tfCurrentFilter = 'all';
+    DOM.filterTabs.forEach((t) => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    if (DOM.filterTabs[0]) {
+      DOM.filterTabs[0].classList.add('active');
+      DOM.filterTabs[0].setAttribute('aria-selected', 'true');
+    }
+
+    tfUpdateDateDisplay();
+    tfRender();
+
+    DOM.contentArea.classList.remove('transitioning');
+    tfIsTransitioning = false;
+  };
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!prefersReducedMotion) {
+    DOM.contentArea.classList.add('transitioning');
+    setTimeout(finishTransition, 160);
+    setTimeout(finishTransition, 500); // safety net
+  } else {
+    finishTransition();
+  }
+}
+
+function tfUpdateDateDisplay() {
+  const d = tfSelectedDate();
+  const dow = d.getDay();
+  DOM.dayNameEl.textContent = DAY_NAMES[dow];
+
+  const suffix = tfGetOrdinalSuffix(tfSelectedDay);
+  let dateStr = MONTH_NAMES[tfSelectedMonth] + ' ' + tfSelectedDay + suffix;
+
+  const currentYear = new Date().getFullYear();
+  if (tfSelectedYear !== currentYear) {
+    dateStr += ', ' + tfSelectedYear;
+  }
+
+  DOM.dayDateEl.textContent = dateStr;
+  DOM.todayChip.style.display = tfIsToday() ? 'none' : 'inline-flex';
+
+  if (tfIsToday()) {
+    DOM.dayNameEl.classList.add('is-today');
+    DOM.dayDateEl.classList.add('is-today');
+  } else {
+    DOM.dayNameEl.classList.remove('is-today');
+    DOM.dayDateEl.classList.remove('is-today');
+  }
+}
+
+function tfLoadTodos() {
+  tfTodos = Storage.getTodos(tfSelectedDate());
+}
+
+function tfSaveTodos() {
+  Storage.setTodos(tfSelectedDate(), tfTodos);
+}
+
+function tfGetFilteredTodos() {
+  switch (tfCurrentFilter) {
+    case 'active': return tfTodos.filter(t => !t.completed);
+    case 'completed': return tfTodos.filter(t => t.completed);
+    default: return tfTodos;
+  }
+}
+
+function tfRender() {
+  const filtered = tfGetFilteredTodos();
+  const activeTodos = tfTodos.filter(t => !t.completed);
+  const completedTodos = tfTodos.filter(t => t.completed);
+  const total = tfTodos.length;
+
+  if (total > 0) {
+    DOM.statsBar.style.display = 'flex';
+    DOM.progressSection.style.display = 'block';
+    DOM.activeCountEl.textContent = activeTodos.length;
+
+    const pct = Math.round((completedTodos.length / total) * 100);
+    DOM.progressFill.style.width = pct + '%';
+    DOM.progressPct.textContent = pct + '%';
+  } else {
+    DOM.statsBar.style.display = 'none';
+    DOM.progressSection.style.display = 'none';
+  }
+
+  DOM.clearCompletedBtn.style.display = completedTodos.length > 0 ? 'inline-flex' : 'none';
+
+  DOM.todoList.innerHTML = '';
+
+  if (filtered.length === 0) {
+    let emptyMsg, emptyTitle, emptyIcon;
+
+    if (tfCurrentFilter === 'active' && total > 0) {
+      emptyTitle = 'No active tasks';
+      emptyMsg = 'Everything is done. Well played.';
+      emptyIcon = 'ph ph-smiley';
+    } else if (tfCurrentFilter === 'completed' && total > 0) {
+      emptyTitle = 'Nothing completed yet';
+      emptyMsg = 'Complete some tasks to see them here.';
+      emptyIcon = 'ph ph-check-circle';
+    } else {
+      emptyTitle = 'All clear';
+      emptyMsg = 'Add your first task to get started.';
+      emptyIcon = 'ph ph-clipboard-text';
+    }
+
+    DOM.todoList.innerHTML =
+      '<div class="empty-state">' +
+        '<div class="empty-icon"><i class="' + emptyIcon + '"></i></div>' +
+        '<p class="empty-title">' + escapeHtml(emptyTitle) + '</p>' +
+        '<p class="empty-desc">' + escapeHtml(emptyMsg) + '</p>' +
+      '</div>';
+    return;
+  }
+
+  filtered.forEach((todo, index) => {
+    const item = document.createElement('div');
+    item.className = 'todo-item' + (todo.completed ? ' completed' : '');
+    item.style.animationDelay = Math.min(index * 0.04, 0.4) + 's';
+    item.dataset.id = todo.id;
+
+    if (tfEditingId === todo.id) {
+      item.innerHTML =
+        '<div class="checkbox-wrapper">' +
+          '<input type="checkbox" ' + (todo.completed ? 'checked' : '') + ' aria-label="Mark task complete">' +
+          '<div class="checkbox-visual">' +
+            '<svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<input type="text" class="edit-input" value="' + escapeAttr(todo.text) + '" maxlength="200" aria-label="Edit task">' +
+        '<div class="todo-actions" style="opacity:1">' +
+          '<button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>' +
+          '<button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>' +
+        '</div>';
+    } else {
+      item.innerHTML =
+        '<div class="checkbox-wrapper">' +
+          '<input type="checkbox" ' + (todo.completed ? 'checked' : '') + ' aria-label="Mark task complete">' +
+          '<div class="checkbox-visual">' +
+            '<svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<span class="todo-text">' + escapeHtml(todo.text) + '</span>' +
+        '<div class="todo-actions">' +
+          '<button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>' +
+          '<button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>' +
+        '</div>';
+    }
+
+    DOM.todoList.appendChild(item);
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', () => { tfToggleTodo(todo.id); });
+
+    if (tfEditingId === todo.id) {
+      const editInput = item.querySelector('.edit-input');
+      const saveBtn = item.querySelector('.save-btn');
+      const cancelBtn = item.querySelector('.cancel-btn');
+
+      requestAnimationFrame(() => {
+        editInput.focus();
+        editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+      });
+
+      const save = () => {
+        const newText = editInput.value.trim();
+        if (newText && newText !== todo.text) {
+          const t = tfTodos.find(x => x.id === todo.id);
+          if (t) t.text = newText;
+          tfSaveTodos();
+          showToast('Task updated', 'success');
+        }
+        tfEditingId = null;
+        tfRender();
+      };
+
+      const cancel = () => {
+        tfEditingId = null;
+        tfRender();
+      };
+
+      editInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') cancel();
+      });
+
+      saveBtn.addEventListener('click', save);
+      cancelBtn.addEventListener('click', cancel);
+    } else {
+      const editBtn = item.querySelector('.edit-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => { tfEditingId = todo.id; tfRender(); });
+      }
+
+      const deleteBtn = item.querySelector('.action-btn.delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          item.classList.add('removing');
+          setTimeout(() => { tfDeleteTodo(todo.id); }, 300);
+        });
+      }
+    }
+  });
+}
+
+function tfAddTodo() {
+  const text = DOM.todoInput.value.trim();
+  if (!text) {
+    DOM.todoInput.focus();
+    const wrapper = DOM.todoInput.closest('.input-wrapper');
+    wrapper.style.animation = 'none';
+    void wrapper.offsetHeight;
+    wrapper.style.animation = 'shake 0.4s ease';
+    return;
+  }
+
+  const todo = {
+    id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9),
+    text: text,
+    completed: false,
+    createdAt: Date.now()
+  };
+
+  tfTodos.unshift(todo);
+  tfSaveTodos();
+  DOM.todoInput.value = '';
+  DOM.todoInput.focus();
+  tfRender();
+  showToast('Task added', 'success');
+}
+
+function tfToggleTodo(id) {
+  const todo = tfTodos.find(t => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    if (todo.completed) {
+      playCompletionSfx();
+      const allDone = tfTodos.length > 0 && tfTodos.every(t => t.completed);
+      if (allDone) {
+        setTimeout(play100Sfx, 250);
+      }
+    }
+    tfSaveTodos();
+    tfRender();
+  }
+}
+
+function tfDeleteTodo(id) {
+  tfTodos = tfTodos.filter(t => t.id !== id);
+  tfSaveTodos();
+  tfRender();
+  showToast('Task removed', 'neutral');
+}
+
+function tfClearCompleted() {
+  const count = tfTodos.filter(t => t.completed).length;
+  tfTodos = tfTodos.filter(t => !t.completed);
+  tfSaveTodos();
+  tfRender();
+  showToast(count + ' task' + (count !== 1 ? 's' : '') + ' cleared', 'neutral');
+}
+
+// --- INITIALIZATION & EVENT LISTENERS --- //
+function initTaskflow() {
+  const now = new Date();
+  tfSelectedYear = now.getFullYear();
+  tfSelectedMonth = now.getMonth();
+  tfSelectedDay = now.getDate();
+
+  tfUpdateDateDisplay();
+  tfLoadTodos();
+  tfRender();
+}
+
+if (DOM.addBtn) DOM.addBtn.addEventListener('click', tfAddTodo);
+if (DOM.todoInput) {
+  DOM.todoInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tfAddTodo();
+  });
+}
+if (DOM.clearCompletedBtn) DOM.clearCompletedBtn.addEventListener('click', tfClearCompleted);
+
+const prevDayEl = document.getElementById('prevDay');
+const nextDayEl = document.getElementById('nextDay');
+if (prevDayEl) prevDayEl.addEventListener('click', () => { tfNavigateDay(-1); });
+if (nextDayEl) nextDayEl.addEventListener('click', () => { tfNavigateDay(1); });
+if (DOM.todayChip) DOM.todayChip.addEventListener('click', tfGoToToday);
+
+DOM.filterTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    DOM.filterTabs.forEach((t) => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    tfCurrentFilter = tab.dataset.filter;
+    tfRender();
+  });
+});
+
+initTaskflow();

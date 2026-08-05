@@ -33,7 +33,7 @@
 
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-section="home"><i class="ph-fill ph-house"></i> <span>Home</span></a>
-        <a href="#" class="nav-item" data-section="tasks"><i class="ph ph-check-square-offset"></i> <span>Tasks</span></a>
+        <a href="#" class="nav-item" data-section="taskflow"><i class="ph ph-check-square-offset"></i> <span>Taskflow</span></a>
         <a href="#" class="nav-item" data-section="tracker"><i class="ph ph-timer"></i> <span>Tracker</span></a>
         <a href="#" class="nav-item" data-section="notes"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
       </nav>
@@ -72,9 +72,75 @@
           </div>
         </div>
 
-        <div class="section-view" data-section="tasks">
-          <h1>Tasks</h1>
-          <p>Task list will go here...</p>
+        <!-- TASKFLOW VIEW -->
+        <div class="section-view" data-section="taskflow">
+          <header class="app-header">
+            <h1 class="app-title">Taskflow</h1>
+            <p class="app-subtitle">Capture what matters. Get it done.</p>
+          </header>
+
+          <div class="tracker-panel nav-group-panel">
+            <nav class="day-navigator" aria-label="Day navigation">
+              <button class="nav-arrow" id="prevDay" aria-label="Previous day">
+                <i class="ph ph-caret-left"></i>
+              </button>
+              <div class="day-info">
+                <span class="day-name" id="dayName"></span>
+                <span class="day-date" id="dayDate"></span>
+              </div>
+              <button class="nav-arrow" id="nextDay" aria-label="Next day">
+                <i class="ph ph-caret-right"></i>
+              </button>
+              <button class="today-chip" id="todayChip" style="display:none" aria-label="Go to today">Today</button>
+            </nav>
+            <p class="keyboard-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> navigate days &nbsp; <kbd>/</kbd> focus input</p>
+          </div>
+
+          <div class="tracker-panel task-group-panel">
+            <div class="input-wrapper" role="form" aria-label="Add a new task">
+              <input
+                type="text"
+                class="todo-input"
+                id="todoInput"
+                placeholder="What needs to be done?"
+                maxlength="200"
+                aria-label="Task description"
+                autocomplete="off"
+              >
+              <button class="add-btn" id="addBtn" aria-label="Add task">
+                <i class="ph ph-plus" style="font-size:0.75rem"></i>
+                Add
+              </button>
+            </div>
+
+            <div class="content-area" id="contentArea">
+              <section class="progress-section" id="progressSection" style="margin-top:1.5rem; display:none;" aria-label="Completion progress">
+                <div class="progress-header">
+                  <span class="progress-label">Progress</span>
+                  <span class="progress-pct" id="progressPct">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                </div>
+              </section>
+
+              <div class="stats-bar" id="statsBar" style="display:none;">
+                <p class="stats-text"><span id="activeCount">0</span> tasks remaining</p>
+                <div class="filter-tabs" role="tablist" aria-label="Filter tasks">
+                  <button class="filter-tab active" role="tab" aria-selected="true" data-filter="all">All</button>
+                  <button class="filter-tab" role="tab" aria-selected="false" data-filter="active">Active</button>
+                  <button class="filter-tab" role="tab" aria-selected="false" data-filter="completed">Done</button>
+                </div>
+              </div>
+
+              <section class="todo-list" id="todoList" aria-label="Task list"></section>
+
+              <button class="clear-completed-btn" id="clearCompletedBtn" style="display:none;" aria-label="Clear completed tasks">
+                <i class="ph ph-trash" style="font-size:0.75rem"></i>
+                Clear completed
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- TRACKER VIEW -->
