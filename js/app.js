@@ -1,11 +1,13 @@
-// =============================================================
-// KEYSTONE APP - REVISED & HARDENED
-// =============================================================
-
 const APP_NAME    = "Keystone";
-const APP_VERSION = "0.3";
+const APP_VERSION = "1";
 const STORAGE_KEY = "keystone";
 const DAY_MS      = 86_400_000;
+
+console.log(
+  "%cKeystone v" + APP_VERSION + " Initialized!%c\nStudy smart. Track everything.",
+  "color: #8b5cf6; font-size: 18px; font-weight: 900;",
+  "color: #6b7280; font-size: 12px; margin-top: 4px; display: block;"
+);
 
 const SUBJECTS = [
   { key: 'physics', name: 'Physics',    icon: 'ph-magnet',     color: 'rgb(244, 63, 94)' },
@@ -78,6 +80,20 @@ function subjectByKey(key) {
   return SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
 }
 
+function validateData(data) {
+    if (!data) return false;
+    if (!data.tracker) return false;
+    if (!data.tracker.days) return false;
+
+    for (const day of Object.values(data.tracker.days)) {
+        if (!Array.isArray(day.todos)) return false;
+        if (!Array.isArray(day.sessions)) return false;
+        if (typeof day.questions !== "object") return false;
+    }
+
+    return true;
+}
+
 // --- STORAGE LAYER --- //
 
 const Storage = {
@@ -85,57 +101,246 @@ const Storage = {
 
   _defaultData() {
     return {
-      notes: { content: '' },
-      tracker: { 
-        goals: { ...DEFAULT_GOALS }, 
+      version: 1,
+      notes: { content: "" },
+      tracker: {
+        goals: { ...DEFAULT_GOALS },
         days: {},
-        activeSession: null // [IMPROVEMENT] Persists active timer across reloads
+        activeSession: null
       }
     };
   },
 
-  // [IMPROVEMENT] Deep merges defaults with saved data to prevent undefined crashes
   _normalizeData(data) {
     const normalized = this._defaultData();
-    if (!data || typeof data !== 'object') return normalized;
-    
-    if (data.notes && typeof data.notes.content === 'string') {
-      normalized.notes.content = data.notes.content;
+
+    if (!data || typeof data !== "object") {
+      return normalized;
     }
-    
-    if (data.tracker && typeof data.tracker === 'object') {
-      if (data.tracker.goals) {
-        normalized.tracker.goals = {
-          hours: typeof data.tracker.goals.hours === 'number' ? data.tracker.goals.hours : DEFAULT_GOALS.hours,
-          minutes: typeof data.tracker.goals.minutes === 'number' ? data.tracker.goals.minutes : DEFAULT_GOALS.minutes,
-          questions: typeof data.tracker.goals.questions === 'number' ? data.tracker.goals.questions : DEFAULT_GOALS.questions
+
+    // ------------------------
+    // Notes
+    // ------------------------
+    if (data.notes && typeof data.notes === "object") {
+      normalized.notes = {
+        content:
+          typeof data.notes.content === "string"
+            ? data.notes.content
+            : ""
+      };
+    }
+
+    // ------------------------
+    // Tracker
+    // ------------------------
+    if (data.tracker && typeof data.tracker === "object") {
+
+      // Goals
+      normalized.tracker.goals = {
+        hours:
+          typeof data.tracker.goals?.hours === "number"
+            ? data.tracker.goals.hours
+            : DEFAULT_GOALS.hours,
+
+        minutes:
+          typeof data.tracker.goals?.minutes === "number"
+            ? data.tracker.goals.minutes
+            : DEFAULT_GOALS.minutes,
+
+        questions:
+          typeof data.tracker.goals?.questions === "number"
+            ? data.tracker.goals.questions
+            : DEFAULT_GOALS.questions
+      };
+
+      // Active timer session
+      if (
+        data.tracker.activeSession &&
+        typeof data.tracker.activeSession === "object"
+      ) {
+        normalized.tracker.activeSession = {
+          subject:
+            typeof data.tracker.activeSession.subject === "string"
+              ? data.tracker.activeSession.subject
+              : "physics",
+
+          description:
+            typeof data.tracker.activeSession.description === "string"
+              ? data.tracker.activeSession.description
+              : "",
+
+          startedAt:
+            typeof data.tracker.activeSession.startedAt === "number"
+              ? data.tracker.activeSession.startedAt
+              : null,
+
+          pausedAccumulated:
+            typeof data.tracker.activeSession.pausedAccumulated === "number"
+              ? data.tracker.activeSession.pausedAccumulated
+              : 0,
+
+          isPaused:
+            !!data.tracker.activeSession.isPaused
         };
       }
-      if (data.tracker.days && typeof data.tracker.days === 'object') {
-        normalized.tracker.days = data.tracker.days;
-      }
-      if (data.tracker.activeSession) {
-        normalized.tracker.activeSession = data.tracker.activeSession;
+
+      // Days
+      if (
+        data.tracker.days &&
+        typeof data.tracker.days === "object"
+      ) {
+
+        normalized.tracker.days = {};
+
+        for (const [dayKey, day] of Object.entries(data.tracker.days)) {
+
+          normalized.tracker.days[dayKey] = {
+            sessions: [],
+            questions: { ...DEFAULT_QUESTIONS },
+            todos: []
+          };
+
+          // ------------------------
+          // Sessions
+          // ------------------------
+          if (Array.isArray(day.sessions)) {
+            normalized.tracker.days[dayKey].sessions = day.sessions
+              .filter(s => s && typeof s === "object")
+              .map(s => ({
+                id:
+                  typeof s.id === "string"
+                    ? s.id
+                    : generateId(),
+
+                subject:
+                  typeof s.subject === "string"
+                    ? s.subject
+                    : "physics",
+
+                description:
+                  typeof s.description === "string"
+                    ? s.description
+                    : "",
+
+                start:
+                  typeof s.start === "string"
+                    ? s.start
+                    : new Date().toISOString(),
+
+                end:
+                  typeof s.end === "string"
+                    ? s.end
+                    : new Date().toISOString(),
+
+                duration:
+                  typeof s.duration === "number"
+                    ? s.duration
+                    : 0
+              }));
+          }
+
+          // ------------------------
+          // Questions
+          // ------------------------
+          if (
+            day.questions &&
+            typeof day.questions === "object"
+          ) {
+            normalized.tracker.days[dayKey].questions = {
+              phy:
+                typeof day.questions.phy === "number"
+                  ? day.questions.phy
+                  : 0,
+
+              chem:
+                typeof day.questions.chem === "number"
+                  ? day.questions.chem
+                  : 0,
+
+              maths:
+                typeof day.questions.maths === "number"
+                  ? day.questions.maths
+                  : 0
+            };
+          }
+
+          // ------------------------
+          // Todos
+          // ------------------------
+          if (Array.isArray(day.todos)) {
+            normalized.tracker.days[dayKey].todos = day.todos
+              .filter(t => t && typeof t === "object")
+              .map(t => ({
+                id:
+                  typeof t.id === "string"
+                    ? t.id
+                    : generateId(),
+
+                text:
+                  typeof t.text === "string"
+                    ? t.text
+                    : "",
+
+                completed:
+                  !!t.completed,
+
+                createdAt:
+                  typeof t.createdAt === "number"
+                    ? t.createdAt
+                    : Date.now()
+              }))
+              .filter(t => t.text.trim() !== "");
+          }
+        }
       }
     }
+
     return normalized;
   },
 
   read() {
     if (this._cache) return this._cache;
+
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      this._cache = this._normalizeData(raw ? JSON.parse(raw) : this._defaultData());
+      let raw = localStorage.getItem(STORAGE_KEY);
+
+      // Try recovering from temp.
+      if (!raw) {
+        const tmp = localStorage.getItem(STORAGE_KEY + "_tmp");
+
+        if (tmp) {
+          console.warn("Recovering storage from temporary backup...");
+          localStorage.setItem(STORAGE_KEY, tmp);
+          localStorage.removeItem(STORAGE_KEY + "_tmp");
+          raw = tmp;
+        }
+      }
+
+      this._cache = this._normalizeData(
+        raw ? JSON.parse(raw) : this._defaultData()
+      );
+
     } catch (err) {
-      console.error("Keystone: storage parse error. Resetting to default.", err);
+      console.error("Keystone: storage parse error. Resetting.", err);
       this._cache = this._defaultData();
     }
+
     return this._cache;
   },
 
   write() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
+      if (!validateData(this._cache)) {
+        console.error("Refusing to save invalid data.");
+        return false;
+      }
+      const json = JSON.stringify(this._cache);
+      // write temp
+      localStorage.setItem(STORAGE_KEY + "_tmp", json);
+      // overwrite real
+      localStorage.setItem(STORAGE_KEY, json);
+      // remove temp
+      localStorage.removeItem(STORAGE_KEY + "_tmp");
       return true;
     } catch (err) {
       console.error("Keystone: storage write error", err);
@@ -690,22 +895,24 @@ function computeDailyTotals(numDays) {
   return totals;
 }
 
-// [IMPROVEMENT] Highly optimized streak calculation
+// [IMPROVEMENT] Removed day limit (365)
 function computeTimeStreak() {
   let streak = 0;
   const allSessions = Storage.allSessions();
   const loggedDays = new Set(allSessions.map(s => startOfDay(new Date(s.end)).getTime()));
 
-  for (let i = 0; i < 365; i++) {
+  let i = 0;
+  while (true) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
     const dayStart = d.getTime();
     
     if (loggedDays.has(dayStart)) {
       streak++;
+      i++;
     } else if (i === 0) {
       // Don't break streak if today is empty but yesterday wasn't
-      continue; 
+      i++; 
     } else {
       break;
     }
@@ -713,24 +920,34 @@ function computeTimeStreak() {
   return streak;
 }
 
+// [IMPROVEMENT] Removed day limit (365)
 function computeQuestionStreak() {
   const goal = Storage.getGoals().questions;
   if (!goal || goal <= 0) return 0;
 
   let streak = 0;
-  for (let i = 0; i < 365; i++) {
+  let i = 0;
+  
+  while (true) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
 
     if (!Storage.dayExists(d)) {
-      if (i === 0) continue; 
+      if (i === 0) { i++; continue; } 
       break;
     }
+    
     const q = Storage.getQuestions(d);
     const total = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
-    if (total >= goal) streak++;
-    else if (i === 0) continue; // Grace day for today
-    else break;
+    
+    if (total >= goal) {
+      streak++;
+      i++;
+    } else if (i === 0) {
+      i++; // Grace day for today
+    } else {
+      break;
+    }
   }
   return streak;
 }
@@ -927,9 +1144,9 @@ function renderAll() {
 }
 
 
-// =============================================================
+// ======================
 // BACKUP & RESTORE
-// =============================================================
+// ======================
 function exportData() {
   const payload = {
     app:        APP_NAME,
@@ -1026,9 +1243,9 @@ window.addEventListener('keydown', (e) => {
 renderAll();
 
 
-// =============================================================
+// ============================
 // TASKFLOW FRONTEND LOGIC
-// =============================================================
+// ============================
 
 function escapeHtml(str) {
   const div = document.createElement('div');

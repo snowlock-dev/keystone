@@ -13,7 +13,7 @@ It tries to combine all of the features I love from different apps/websites, whi
 - [x] Add a guideplan section
 - [x] Add a timelog section with charts & graphs
 - [x] Add a daily goal section with streaks
-- [ ] Add a good todo section from scratch
+- [x] Add a good todo section
 
 
 ## Credits
