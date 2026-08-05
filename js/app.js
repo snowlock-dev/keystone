@@ -1,5 +1,9 @@
+// =============================================================
+// KEYSTONE APP - REVISED & HARDENED
+// =============================================================
+
 const APP_NAME    = "Keystone";
-const APP_VERSION = "0.2";
+const APP_VERSION = "0.3";
 const STORAGE_KEY = "keystone";
 const DAY_MS      = 86_400_000;
 
@@ -16,6 +20,7 @@ const MONTH_NAMES = [
 ];
 
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 const KEYBOARD_SHORTCUTS = {
   '1':'home', 
@@ -27,26 +32,25 @@ const KEYBOARD_SHORTCUTS = {
 const DEFAULT_GOALS     = { hours: 4, minutes: 0, questions: 50 };
 const DEFAULT_QUESTIONS = { phy: 0, chem: 0, maths: 0 };
 
-
-
 // --- UTILITY FUNCTIONS --- //
 
+// [IMPROVEMENT] Unified ID generator to prevent collisions
+function generateId() {
+  if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
+}
 
-
-// Formats date as YYYY-MM-DD (local time). Used as day key
 function dayKey(date) {
   const d = date instanceof Date ? date : new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Return a new Date set to 00:00:00 local time
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-// Seconds -> "HH:MM:SS"
 function formatTime(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
@@ -54,38 +58,27 @@ function formatTime(sec) {
   return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
 }
 
-// Seconds -> "1h 30min" or "45min" 
 function formatDurationShort(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
-
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// Debounce helper, because why not 
 function debounce(fn, ms) {
     let timer;
-
     function wrapped(...args) {
         clearTimeout(timer);
         timer = setTimeout(() => fn(...args), ms);
     }
-
-    wrapped.cancel = () => {
-        clearTimeout(timer);
-    };
-
+    wrapped.cancel = () => clearTimeout(timer);
     return wrapped;
 }
 
-// Look up a subject definition by key (fallback to first).
 function subjectByKey(key) {
   return SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
 }
 
-
 // --- STORAGE LAYER --- //
-
 
 const Storage = {
   _cache: null,
@@ -93,17 +86,48 @@ const Storage = {
   _defaultData() {
     return {
       notes: { content: '' },
-      tracker: { goals: { ...DEFAULT_GOALS }, days: {} }
+      tracker: { 
+        goals: { ...DEFAULT_GOALS }, 
+        days: {},
+        activeSession: null // [IMPROVEMENT] Persists active timer across reloads
+      }
     };
+  },
+
+  // [IMPROVEMENT] Deep merges defaults with saved data to prevent undefined crashes
+  _normalizeData(data) {
+    const normalized = this._defaultData();
+    if (!data || typeof data !== 'object') return normalized;
+    
+    if (data.notes && typeof data.notes.content === 'string') {
+      normalized.notes.content = data.notes.content;
+    }
+    
+    if (data.tracker && typeof data.tracker === 'object') {
+      if (data.tracker.goals) {
+        normalized.tracker.goals = {
+          hours: typeof data.tracker.goals.hours === 'number' ? data.tracker.goals.hours : DEFAULT_GOALS.hours,
+          minutes: typeof data.tracker.goals.minutes === 'number' ? data.tracker.goals.minutes : DEFAULT_GOALS.minutes,
+          questions: typeof data.tracker.goals.questions === 'number' ? data.tracker.goals.questions : DEFAULT_GOALS.questions
+        };
+      }
+      if (data.tracker.days && typeof data.tracker.days === 'object') {
+        normalized.tracker.days = data.tracker.days;
+      }
+      if (data.tracker.activeSession) {
+        normalized.tracker.activeSession = data.tracker.activeSession;
+      }
+    }
+    return normalized;
   },
 
   read() {
     if (this._cache) return this._cache;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      this._cache = raw ? JSON.parse(raw) : this._defaultData();
+      this._cache = this._normalizeData(raw ? JSON.parse(raw) : this._defaultData());
     } catch (err) {
-      console.error("Keystone: storage parse error", err);
+      console.error("Keystone: storage parse error. Resetting to default.", err);
       this._cache = this._defaultData();
     }
     return this._cache;
@@ -119,12 +143,10 @@ const Storage = {
     }
   },
 
-  // Used by import
   replaceAll(data) {
-    this._cache = data;
+    this._cache = this._normalizeData(data);
     this.write();
   },
-
 
   // -- Notes ------
   getNotes()       { return this.read().notes.content; },
@@ -135,15 +157,24 @@ const Storage = {
   getGoals()       { return this.read().tracker.goals; },
   setGoals(goals)  { this.read().tracker.goals = goals; this.write(); },
 
-  // -- Per-day access ------
+  // -- Active Session Persistence ------
+  getActiveSession() { return this.read().tracker.activeSession; },
+  setActiveSession(session) {
+    this.read().tracker.activeSession = session;
+    this.write();
+  },
 
-  // returns day record, creates it if missing
+  // -- Per-day access ------
   _ensureDay(date) {
     const key  = dayKey(date);
     const days = this.read().tracker.days;
     if (!days[key]) days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS }, todos: [] };
+    
+    // Safety fallbacks for older save formats
     if (!days[key].todos) days[key].todos = [];
-
+    if (!days[key].questions) days[key].questions = { ...DEFAULT_QUESTIONS };
+    if (!days[key].sessions) days[key].sessions = [];
+    
     return days[key];
   },
 
@@ -152,10 +183,7 @@ const Storage = {
   },
 
   // -- Todos/Tasks ------
-  getTodos(date) {
-    return this._ensureDay(date).todos || [];
-  },
-
+  getTodos(date) { return this._ensureDay(date).todos || []; },
   setTodos(date, todos) {
     this._ensureDay(date).todos = todos;
     this.write();
@@ -165,7 +193,6 @@ const Storage = {
     const day = this.read().tracker.days[dayKey(date)];
     return day ? { ...DEFAULT_QUESTIONS, ...day.questions } : { ...DEFAULT_QUESTIONS };
   },
-
   setQuestions(date, q) {
     this._ensureDay(date).questions = q;
     this.write();
@@ -194,11 +221,10 @@ const Storage = {
     return false;
   },
 
-  // Flatten all sessions across all days.
   allSessions() {
     const out = [];
     for (const day of Object.values(this.read().tracker.days)) {
-      out.push(...day.sessions);
+      if (day.sessions) out.push(...day.sessions);
     }
     return out;
   }
@@ -207,33 +233,27 @@ const Storage = {
 
 // --- DOM REFERENCES --- //
 
-
 const $ = (id) => document.getElementById(id);
 
 const DOM = {
-  // Layout
   navItems:       document.querySelectorAll('.nav-item'),
   sectionViews:   document.querySelectorAll('.section-view'),
   toastContainer: $('toastContainer'),
 
-  // Calendar
   calendarGrid: $('calendarGrid'),
   calMonthYear: $('calMonthYear'),
   calPrev:      $('calPrev'),
   calNext:      $('calNext'),
 
-  // Notes
   notesInput:         $('notesInput'),
   notesSaveIndicator: $('notesSaveIndicator'),
   notesCount:         $('notesCount'),
   notesClearBtn:      $('notesClearBtn'),
 
-  // Backup
   exportBtn:       $('exportBtn'),
   importBtn:       $('importBtn'),
   importFileInput: $('importFileInput'),
 
-  // Taskflow
   todoInput:          $('todoInput'),
   addBtn:             $('addBtn'),
   todoList:           $('todoList'),
@@ -249,18 +269,15 @@ const DOM = {
   contentArea:        $('contentArea'),
   filterTabs:         document.querySelectorAll('.filter-tab'),
 
-  // Time tracker
   subjectSelect:      $('subjectSelect'),
   sessionDesc:        $('sessionDesc'),
   activeTimerDisplay: $('activeTimerDisplay'),
   startBtn:           $('startBtn'),
   endBtn:             $('endBtn'),
 
-  // TIme tracker: session log
   sessionLog:   $('sessionLog'),
   openModalBtn: $('openModalBtn'),
 
-  // Time tracker: modal
   sessionModal:    $('sessionModal'),
   modalSubject:    $('modalSubject'),
   modalDuration:   $('modalDuration'),
@@ -268,20 +285,17 @@ const DOM = {
   discardModalBtn: $('discardModalBtn'),
   saveModalBtn:    $('saveModalBtn'),
 
-  // Dashboard: stats
   statMaxDay:         $('statMaxDay'),
   statAvgSession:     $('statAvgSession'),
   statAvgHrsDay:      $('statAvgHrsDay'),
   statTimeStreak:     $('statTimeStreak'),
   statQuestionStreak: $('statQuestionStreak'),
 
-  // Dashboard: charts
   pieChart:  $('pieChart'),
   pieTotal:  $('pieTotal'),
   pieLegend: $('pieLegend'),
   barChart:  $('barChart'),
 
-  // Goals & Questions
   goalHours:         $('goalHours'),
   goalMinutes:       $('goalMinutes'),
   questionsGoal:     $('questionsGoal'),
@@ -296,6 +310,7 @@ const DOM = {
 // --- TOAST NOTIFICATION --- //
 
 function showToast(message, state = 'neutral') {
+  if (!DOM.toastContainer) return;
   const toast = document.createElement('div');
   toast.className = 'toast ' + state;
   toast.textContent = message;
@@ -306,7 +321,6 @@ function showToast(message, state = 'neutral') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
-
 
 let activeSection = 'home';
 
@@ -360,11 +374,24 @@ function renderCalendar() {
     const dateObj = new Date(calYear, calMonth, d);
     const cell = document.createElement('div');
     cell.className = 'calendar-day';
+    cell.style.cursor = 'pointer'; // [IMPROVEMENT] Make it visually clear the days are clickable
+    
     if (isSameDay(dateObj, today)) cell.classList.add('today');
     cell.innerHTML = `
       <span class="cal-dow">${DAY_NAMES_SHORT[dateObj.getDay()]}</span>
       <span class="cal-date">${d}</span>
     `;
+    
+    // [NEW] Click handler to jump to Taskflow for the selected day
+    cell.addEventListener('click', () => {
+      tfSelectedYear = calYear;
+      tfSelectedMonth = calMonth;
+      tfSelectedDay = d;
+      
+      switchSection('taskflow'); // Switch view to Taskflow
+      tfSwitchDay();             // Apply the date change and load tasks
+    });
+
     DOM.calendarGrid.appendChild(cell);
   }
 }
@@ -388,8 +415,7 @@ function updateNotesCount() {
   const text  = DOM.notesInput.value;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const chars = text.length;
-  DOM.notesCount.textContent =
-    `${words} word${words !== 1 ? 's' : ''} · ${chars} char${chars !== 1 ? 's' : ''}`;
+  DOM.notesCount.textContent = `${words} word${words !== 1 ? 's' : ''} · ${chars} char${chars !== 1 ? 's' : ''}`;
 }
 
 function handleNotesChange() {
@@ -399,7 +425,6 @@ function handleNotesChange() {
   updateNotesCount();
 }
 
-// Two-click confirmation for clearing notes
 let notesClearConfirm = false;
 let notesClearTimer   = null;
 
@@ -407,7 +432,6 @@ function handleNotesClear() {
   if (!DOM.notesInput.value.trim()) return;
 
   if (!notesClearConfirm) {
-    // First click — arm confirmation
     notesClearConfirm = true;
     DOM.notesClearBtn.classList.add('confirm');
     DOM.notesClearBtn.innerHTML = '<i class="ph-fill ph-check-fat"></i>';
@@ -421,7 +445,6 @@ function handleNotesClear() {
     return;
   }
 
-  // Second click — actually clear
   clearTimeout(notesClearTimer);
   notesClearConfirm = false;
   DOM.notesClearBtn.classList.remove('confirm');
@@ -434,7 +457,6 @@ function handleNotesClear() {
   showToast('Notes cleared', 'success');
 }
 
-// Init notes
 DOM.notesInput.value = Storage.getNotes();
 DOM.notesSaveIndicator.textContent = 'All changes saved';
 DOM.notesSaveIndicator.classList.remove('saving');
@@ -443,7 +465,6 @@ updateNotesCount();
 DOM.notesInput.addEventListener('input', handleNotesChange);
 DOM.notesClearBtn.addEventListener('click', handleNotesClear);
 
-// Tab inserts two spaces inside the textarea
 DOM.notesInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab') return;
   e.preventDefault();
@@ -455,12 +476,12 @@ DOM.notesInput.addEventListener('keydown', (e) => {
 });
 
 
-// TRACKER: ACTIVE SESSION (in-memory only, not persisted)
+// TRACKER: ACTIVE SESSION
 const activeTracker = {
   subject:           'physics',
   description:       '',
-  startedAt:         null,   // ms timestamp of current run start
-  pausedAccumulated: 0,      // seconds accumulated before current run
+  startedAt:         null,
+  pausedAccumulated: 0,
   isPaused:          false
 };
 
@@ -470,6 +491,7 @@ function resetActiveTracker() {
   activeTracker.startedAt         = null;
   activeTracker.pausedAccumulated = 0;
   activeTracker.isPaused          = false;
+  Storage.setActiveSession(null); // Clear from storage on reset
 }
 
 function getActiveElapsedSec() {
@@ -490,12 +512,11 @@ function updateTimerUI() {
   DOM.startBtn.classList.toggle('pause', isRunning);
   DOM.startBtn.classList.toggle('start', !isRunning);
 
-  DOM.endBtn.disabled         = !isRunning && !activeTracker.isPaused;
+  DOM.endBtn.disabled         = !isRunning && activeTracker.pausedAccumulated === 0;
   DOM.subjectSelect.disabled  = isRunning;
   DOM.sessionDesc.disabled    = isRunning;
 }
 
-// Start / Pause toggle
 DOM.startBtn.addEventListener('click', () => {
   if (activeTracker.startedAt) {
     // Pause
@@ -512,17 +533,17 @@ DOM.startBtn.addEventListener('click', () => {
     activeTracker.startedAt = Date.now();
     activeTracker.isPaused  = false;
   }
+  Storage.setActiveSession({ ...activeTracker }); // [IMPROVEMENT] Persist state
   updateTimerUI();
 });
 
-// End & log
 DOM.endBtn.addEventListener('click', () => {
   const duration = getActiveElapsedSec();
   if (duration > 5) {
     const now   = new Date();
     const start = new Date(now.getTime() - duration * 1000);
     Storage.addSession({
-      id:          now.getTime().toString(36),
+      id:          generateId(),
       subject:     activeTracker.subject,
       description: activeTracker.description,
       start:       start.toISOString(),
@@ -540,12 +561,21 @@ DOM.endBtn.addEventListener('click', () => {
   renderAll();
 });
 
-// Tick every second while running
 setInterval(() => {
   if (activeTracker.startedAt) updateTimerUI();
 }, 1000);
 
-updateTimerUI();
+// [IMPROVEMENT] Restore active session on load
+function initActiveSession() {
+  const saved = Storage.getActiveSession();
+  if (saved && (saved.startedAt || saved.isPaused)) {
+    Object.assign(activeTracker, saved);
+    DOM.subjectSelect.value = activeTracker.subject;
+    DOM.sessionDesc.value = activeTracker.description;
+  }
+  updateTimerUI();
+}
+initActiveSession();
 
 
 // -- TRACKER: SESSION LOG -- //
@@ -586,7 +616,6 @@ function renderSessionLog() {
   }
 }
 
-// Delete via event delegation
 DOM.sessionLog.addEventListener('click', (e) => {
   const btn = e.target.closest('.log-item-delete');
   if (!btn) return;
@@ -604,14 +633,9 @@ DOM.openModalBtn.addEventListener('click', () => {
   DOM.sessionModal.classList.add('active');
 });
 
-DOM.discardModalBtn.addEventListener('click', () => {
-  DOM.sessionModal.classList.remove('active');
-});
-
+DOM.discardModalBtn.addEventListener('click', () => DOM.sessionModal.classList.remove('active'));
 DOM.sessionModal.addEventListener('click', (e) => {
-  if (e.target === DOM.sessionModal) {
-    DOM.sessionModal.classList.remove('active');
-  }
+  if (e.target === DOM.sessionModal) DOM.sessionModal.classList.remove('active');
 });
 
 DOM.saveModalBtn.addEventListener('click', () => {
@@ -629,7 +653,7 @@ DOM.saveModalBtn.addEventListener('click', () => {
   const start = new Date(now.getTime() - durationSec * 1000);
 
   Storage.addSession({
-    id:          now.getTime().toString(36),
+    id:          generateId(),
     subject,
     description: desc,
     start:       start.toISOString(),
@@ -645,7 +669,6 @@ DOM.saveModalBtn.addEventListener('click', () => {
 
 // -- DASHBOARD: STATS COMPUTATION -- //
 
-// Total seconds for sessions ending today
 function getTodayTotalSeconds() {
   const todayStart = startOfDay(new Date()).getTime();
   return Storage.allSessions()
@@ -653,7 +676,6 @@ function getTodayTotalSeconds() {
     .reduce((sum, s) => sum + s.duration, 0);
 }
 
-// Per-day totals for the last `numDays` days, keyed by day-start ms
 function computeDailyTotals(numDays) {
   const totals = {};
   for (let i = 0; i < numDays; i++) {
@@ -668,19 +690,25 @@ function computeDailyTotals(numDays) {
   return totals;
 }
 
+// [IMPROVEMENT] Highly optimized streak calculation
 function computeTimeStreak() {
   let streak = 0;
+  const allSessions = Storage.allSessions();
+  const loggedDays = new Set(allSessions.map(s => startOfDay(new Date(s.end)).getTime()));
+
   for (let i = 0; i < 365; i++) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
     const dayStart = d.getTime();
-    const dayEnd   = dayStart + DAY_MS;
-    const hasLogged = Storage.allSessions().some(s => {
-      const t = new Date(s.end).getTime();
-      return t >= dayStart && t < dayEnd;
-    });
-    if (hasLogged) streak++;
-    else break;
+    
+    if (loggedDays.has(dayStart)) {
+      streak++;
+    } else if (i === 0) {
+      // Don't break streak if today is empty but yesterday wasn't
+      continue; 
+    } else {
+      break;
+    }
   }
   return streak;
 }
@@ -695,12 +723,13 @@ function computeQuestionStreak() {
     d.setDate(d.getDate() - i);
 
     if (!Storage.dayExists(d)) {
-      if (i === 0) continue; // today hasn't started yet; don't break
+      if (i === 0) continue; 
       break;
     }
     const q = Storage.getQuestions(d);
     const total = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
     if (total >= goal) streak++;
+    else if (i === 0) continue; // Grace day for today
     else break;
   }
   return streak;
@@ -710,33 +739,23 @@ function computeQuestionStreak() {
 // -- DASHBOARD — RENDERING -- //
 
 function renderStats(dailyTotals) {
-  // 1. Most hours in a single day (7-day window)
   const maxDay = Math.max(0, ...Object.values(dailyTotals));
   DOM.statMaxDay.textContent = formatDurationShort(maxDay);
 
-  // 2. Average session duration (30-day window)
   const thirtyDaysAgo = startOfDay(new Date()).getTime() - 29 * DAY_MS;
   const recent = Storage.allSessions().filter(s => new Date(s.end).getTime() >= thirtyDaysAgo);
-  const avgSes = recent.length > 0
-    ? recent.reduce((a, s) => a + s.duration, 0) / recent.length
-    : 0;
+  const avgSes = recent.length > 0 ? recent.reduce((a, s) => a + s.duration, 0) / recent.length : 0;
   DOM.statAvgSession.textContent = formatDurationShort(avgSes);
 
-  // 3. 7-day daily average
   const weekTotal = Object.values(dailyTotals).reduce((a, b) => a + b, 0);
   DOM.statAvgHrsDay.textContent = formatDurationShort(weekTotal / 7);
 
-  // 4. Time streak
   DOM.statTimeStreak.textContent = computeTimeStreak() + ' days';
-
-  // 5. Question streak
   DOM.statQuestionStreak.textContent = computeQuestionStreak() + ' days';
 }
 
-
 function renderPieChart() {
   const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
-
   const pieData = {};
   SUBJECTS.forEach(s => { pieData[s.key] = 0; });
 
@@ -748,7 +767,6 @@ function renderPieChart() {
 
   const total = Object.values(pieData).reduce((a, b) => a + b, 0);
   DOM.pieTotal.textContent = formatDurationShort(total);
-
   DOM.pieChart.innerHTML = '';
   DOM.pieLegend.innerHTML = '';
 
@@ -768,17 +786,12 @@ function renderPieChart() {
   for (const subj of SUBJECTS) {
     const value = pieData[subj.key];
     if (value === 0) continue;
-
     const pct = value / total;
 
     if (pct === 1) {
-      // Full circle to avoid 360* path math edge case
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', CX);
-      circle.setAttribute('cy', CY);
-      circle.setAttribute('r', R);
-      circle.setAttribute('fill', subj.color);
-      circle.setAttribute('opacity', '0.9');
+      circle.setAttribute('cx', CX); circle.setAttribute('cy', CY); circle.setAttribute('r', R);
+      circle.setAttribute('fill', subj.color); circle.setAttribute('opacity', '0.9');
       DOM.pieChart.appendChild(circle);
     } else {
       const endAngle = startAngle + pct * 360;
@@ -790,38 +803,31 @@ function renderPieChart() {
       const y2 = CY + R * Math.sin(toRad(endAngle));
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d',
-        `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+      path.setAttribute('d', `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`);
       path.setAttribute('fill', subj.color);
       path.setAttribute('opacity', '0.9');
       path.setAttribute('stroke', 'var(--card)');
       path.setAttribute('stroke-width', '2');
       path.setAttribute('stroke-linejoin', 'round');
       DOM.pieChart.appendChild(path);
-
       startAngle = endAngle;
     }
 
     const legend = document.createElement('div');
     legend.className = 'legend-item';
-    legend.innerHTML =
-      `<span class="legend-dot" style="background:${subj.color}"></span> ` +
-      `${subj.name} (${Math.round(pct * 100)}%)`;
+    legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${Math.round(pct * 100)}%)`;
     DOM.pieLegend.appendChild(legend);
   }
 }
 
-
 function renderBarChart(dailyTotals) {
   const W = 400, H = 200, PAD = 40;
-  const maxVal = Math.max(3600, ...Object.values(dailyTotals)); // min 1h scale
+  const maxVal = Math.max(3600, ...Object.values(dailyTotals));
   const maxH   = H - PAD * 2;
   const stepX  = (W - PAD * 2) / 7;
   const barW   = stepX * 0.6;
-
   const parts = [];
 
-  // Grid lines + axis labels
   parts.push(`<line x1="${PAD}" y1="${PAD}" x2="${W-PAD}" y2="${PAD}" class="chart-grid-line"/>`);
   parts.push(`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" class="chart-grid-line"/>`);
   parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${formatDurationShort(maxVal)}</text>`);
@@ -829,7 +835,6 @@ function renderBarChart(dailyTotals) {
 
   const allSessions = Storage.allSessions();
 
-  // Stacked bars (oldest day → leftmost)
   for (let i = 6; i >= 0; i--) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
@@ -841,33 +846,23 @@ function renderBarChart(dailyTotals) {
 
     for (const subj of SUBJECTS) {
       const subjDur = allSessions
-        .filter(s => s.subject === subj.key
-          && new Date(s.end).getTime() >= dayStart
-          && new Date(s.end).getTime() <  dayEnd)
+        .filter(s => s.subject === subj.key && new Date(s.end).getTime() >= dayStart && new Date(s.end).getTime() <  dayEnd)
         .reduce((sum, s) => sum + s.duration, 0);
 
       if (subjDur > 0) {
         const barH = (subjDur / maxVal) * maxH;
         currentY -= barH;
-        parts.push(
-          `<rect x="${x}" y="${currentY}" width="${barW}" height="${barH}" ` +
-          `fill="${subj.color}" rx="2" class="bar-chart-bar">` +
-          `<title>${subj.name}: ${formatDurationShort(subjDur)}</title></rect>`
-        );
+        parts.push(`<rect x="${x}" y="${currentY}" width="${barW}" height="${barH}" fill="${subj.color}" rx="2" class="bar-chart-bar"><title>${subj.name}: ${formatDurationShort(subjDur)}</title></rect>`);
       }
     }
-
-    const label = `${d.getMonth() + 1}/${d.getDate()}`;
-    parts.push(`<text x="${x + barW/2}" y="${H - PAD + 15}" text-anchor="middle" class="chart-axis-label">${label}</text>`);
+    parts.push(`<text x="${x + barW/2}" y="${H - PAD + 15}" text-anchor="middle" class="chart-axis-label">${d.getMonth() + 1}/${d.getDate()}</text>`);
   }
-
   DOM.barChart.innerHTML = parts.join('');
 }
 
 
 // -- DASHBOARD: GOALS & QUESTIONS -- //
 
-// Update only the progress text (safe to call on every input keystroke).
 function renderGoalProgress() {
   const goals    = Storage.getGoals();
   const q        = Storage.getQuestions(new Date());
@@ -882,7 +877,6 @@ function renderGoalProgress() {
   DOM.questionsGoalText.classList.toggle('met', goals.questions > 0 && totalQ >= goals.questions);
 }
 
-// Full goals render: syncs input values from storage (call on init / data change)
 function renderGoals() {
   const goals = Storage.getGoals();
   const q     = Storage.getQuestions(new Date());
@@ -897,7 +891,6 @@ function renderGoals() {
   renderGoalProgress();
 }
 
-// Goal input listeners
 [DOM.goalHours, DOM.goalMinutes, DOM.questionsGoal].forEach(input => {
   input.addEventListener('input', () => {
     Storage.setGoals({
@@ -909,7 +902,6 @@ function renderGoals() {
   });
 });
 
-// Question input listeners
 [DOM.qPhy, DOM.qChem, DOM.qMaths].forEach(input => {
   input.addEventListener('input', () => {
     Storage.setQuestions(new Date(), {
@@ -920,7 +912,6 @@ function renderGoals() {
     renderGoalProgress();
   });
 });
-
 
 function renderDashboard() {
   const dailyTotals = computeDailyTotals(7);
@@ -936,12 +927,9 @@ function renderAll() {
 }
 
 
-/* =============================================================
- * BACKUP & RESTORE
- * -------------------------------------------------------------
- * Export wraps the storage data with metadata. Import validates
- * and replaces all data, then reloads.
- * ============================================================= */
+// =============================================================
+// BACKUP & RESTORE
+// =============================================================
 function exportData() {
   const payload = {
     app:        APP_NAME,
@@ -954,82 +942,50 @@ function exportData() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'keystone.json';
+  a.download = 'keystone-backup.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  showToast('Backup exported to keystone.json', 'success');
+  showToast('Backup exported to keystone-backup.json', 'success');
 }
 
-
+// [IMPROVEMENT] Loosened validation for better forward-compatibility
 function isValidBackup(parsed) {
   if (!parsed || typeof parsed !== 'object') return false;
-
-  if (parsed.app !== APP_NAME) return false;
-
-  if (!parsed.data || typeof parsed.data !== 'object')
-    return false;
-
-  const data = parsed.data;
-
-  if (!data.notes || typeof data.notes.content !== 'string')
-    return false;
-
-  if (!data.tracker || typeof data.tracker !== 'object')
-    return false;
-
-  if (!data.tracker.goals)
-    return false;
-
-  const g = data.tracker.goals;
-
-  if (
-    typeof g.hours !== 'number' ||
-    typeof g.minutes !== 'number' ||
-    typeof g.questions !== 'number'
-  )
-    return false;
-
-  if (
-    !data.tracker.days ||
-    typeof data.tracker.days !== 'object'
-  )
-    return false;
-
+  if (!parsed.data || typeof parsed.data !== 'object') return false;
+  if (!parsed.data.tracker || typeof parsed.data.tracker !== 'object') return false;
   return true;
 }
 
-
+// [FIX] Complete rewrite of handleImportFile to fix critical scope/ReferenceError bug
 function handleImportFile(file) {
-  if (!file || !file.name.endsWith('.json')) {
-    showToast('Please select a keystone.json file', 'error');
+  if (!file) return;
+  
+  if (!file.name.toLowerCase().endsWith('.json')) {
+    showToast('Please select a .json backup file', 'error');
     return;
   }
-
-  if (!isValidBackup(parsed)) {
-    showToast("Invalid backup file", "error");
-    return;
-  }
-
-  saveNotesDebounced.cancel();
 
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const parsed = JSON.parse(e.target.result);
-      if (!parsed || !parsed.data) {
-        showToast('Invalid backup format', 'error');
+      if (!isValidBackup(parsed)) {
+        showToast("Invalid backup file format", "error");
         return;
       }
-      Storage.replaceAll(structuredClone(parsed.data));
-      showToast('keystone.json loaded! Reloading…', 'success');
+      saveNotesDebounced.cancel();
+      Storage.replaceAll(parsed.data);
+      showToast('Backup loaded successfully! Reloading…', 'success');
       setTimeout(() => location.reload(), 1000);
     } catch (err) {
+      console.error(err);
       showToast('Error reading JSON file', 'error');
     }
   };
+  reader.onerror = () => showToast('Failed to read file', 'error');
   reader.readAsText(file);
 }
 
@@ -1038,37 +994,27 @@ DOM.importBtn.addEventListener('click', () => DOM.importFileInput.click());
 DOM.importFileInput.addEventListener('change', (e) => {
   if (e.target.files && e.target.files.length > 0) {
     handleImportFile(e.target.files[0]);
-    e.target.value = '';
+    e.target.value = ''; // Reset input
   }
 });
 
 
 // -- KEYBOARD SHORTCUTS -- //
 window.addEventListener('keydown', (e) => {
-  // Ctrl/Cmd + 1-4 -> switch section
   if ((e.ctrlKey || e.metaKey) && KEYBOARD_SHORTCUTS[e.key]) {
     e.preventDefault();
     switchSection(KEYBOARD_SHORTCUTS[e.key]);
     return;
   }
 
-  // Arrow keys -> calendar navigation / day navigation
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
   if (e.key === 'ArrowLeft') {
-    if (activeSection === 'taskflow') {
-      tfNavigateDay(-1);
-    } else {
-      navigateCalendar(-1);
-    }
+    activeSection === 'taskflow' ? tfNavigateDay(-1) : navigateCalendar(-1);
   }
   if (e.key === 'ArrowRight') {
-    if (activeSection === 'taskflow') {
-      tfNavigateDay(1);
-    } else {
-      navigateCalendar(1);
-    }
+    activeSection === 'taskflow' ? tfNavigateDay(1) : navigateCalendar(1);
   }
 
   if (e.key === '/' && activeSection === 'taskflow' && !tfEditingId) {
@@ -1081,7 +1027,7 @@ renderAll();
 
 
 // =============================================================
-// TASKFLOW FRONTEND LOGIC (from taskflow.html)
+// TASKFLOW FRONTEND LOGIC
 // =============================================================
 
 function escapeHtml(str) {
@@ -1091,7 +1037,7 @@ function escapeHtml(str) {
 }
 
 function escapeAttr(str) {
-  return str
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
@@ -1104,64 +1050,50 @@ let audioCtx = null;
 
 function getAudioCtx() {
   if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } 
+    catch(e) { return null; }
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
 function playCompletionSfx() {
   try {
     const ctx = getAudioCtx();
+    if(!ctx) return;
     const t = ctx.currentTime;
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
-    osc1.frequency.setValueAtTime(587.33, t);
-    osc2.frequency.setValueAtTime(880, t);
+    const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator(), gain = ctx.createGain();
+    osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+    osc1.type = 'sine'; osc2.type = 'triangle';
+    osc1.frequency.setValueAtTime(587.33, t); osc2.frequency.setValueAtTime(880, t);
     osc1.frequency.exponentialRampToValueAtTime(587.33, t + 0.15);
     osc2.frequency.exponentialRampToValueAtTime(1174.66, t + 0.12);
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-    osc1.start(t);
-    osc2.start(t);
-    osc1.stop(t + 0.28);
-    osc2.stop(t + 0.28);
+    osc1.start(t); osc2.start(t); osc1.stop(t + 0.28); osc2.stop(t + 0.28);
   } catch (e) {}
 }
 
 function play100Sfx() {
   try {
     const ctx = getAudioCtx();
+    if(!ctx) return;
     const t = ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
       osc.type = 'sine';
       const start = t + i * 0.12;
       osc.frequency.setValueAtTime(freq, start);
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.32);
-      osc.start(start);
-      osc.stop(start + 0.32);
+      osc.start(start); osc.stop(start + 0.32);
     });
   } catch (e) {}
 }
 
 // --- STATE --- //
-const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
 let tfTodos = [];
 let tfCurrentFilter = 'all';
 let tfEditingId = null;
@@ -1170,70 +1102,44 @@ let tfSelectedMonth = 0;
 let tfSelectedDay = 1;
 let tfIsTransitioning = false;
 
-function tfSelectedDate() {
-  return new Date(tfSelectedYear, tfSelectedMonth, tfSelectedDay);
-}
-
+function tfSelectedDate() { return new Date(tfSelectedYear, tfSelectedMonth, tfSelectedDay); }
 function tfIsToday() {
   const now = new Date();
-  return tfSelectedYear === now.getFullYear() &&
-         tfSelectedMonth === now.getMonth() &&
-         tfSelectedDay === now.getDate();
+  return tfSelectedYear === now.getFullYear() && tfSelectedMonth === now.getMonth() && tfSelectedDay === now.getDate();
 }
-
 function tfGetOrdinalSuffix(n) {
-  const s = ['th','st','nd','rd'];
-  const v = n % 100;
+  const s = ['th','st','nd','rd'], v = n % 100;
   return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 function tfNavigateDay(delta) {
   if (tfIsTransitioning) return;
-
   const d = new Date(tfSelectedYear, tfSelectedMonth, tfSelectedDay + delta);
-  tfSelectedYear = d.getFullYear();
-  tfSelectedMonth = d.getMonth();
-  tfSelectedDay = d.getDate();
-
+  tfSelectedYear = d.getFullYear(); tfSelectedMonth = d.getMonth(); tfSelectedDay = d.getDate();
   tfSwitchDay();
 }
 
 function tfGoToToday() {
   if (tfIsTransitioning || tfIsToday()) return;
-
   const now = new Date();
-  tfSelectedYear = now.getFullYear();
-  tfSelectedMonth = now.getMonth();
-  tfSelectedDay = now.getDate();
-
+  tfSelectedYear = now.getFullYear(); tfSelectedMonth = now.getMonth(); tfSelectedDay = now.getDate();
   tfSwitchDay();
 }
 
 function tfSwitchDay() {
   if (tfIsTransitioning) return;
   tfIsTransitioning = true;
-
   let finished = false;
 
   const finishTransition = () => {
     if (finished) return;
     finished = true;
-
     tfLoadTodos();
-    tfEditingId = null;
-    tfCurrentFilter = 'all';
-    DOM.filterTabs.forEach((t) => {
-      t.classList.remove('active');
-      t.setAttribute('aria-selected', 'false');
-    });
-    if (DOM.filterTabs[0]) {
-      DOM.filterTabs[0].classList.add('active');
-      DOM.filterTabs[0].setAttribute('aria-selected', 'true');
-    }
-
+    tfEditingId = null; tfCurrentFilter = 'all';
+    DOM.filterTabs.forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+    if (DOM.filterTabs[0]) { DOM.filterTabs[0].classList.add('active'); DOM.filterTabs[0].setAttribute('aria-selected', 'true'); }
     tfUpdateDateDisplay();
     tfRender();
-
     DOM.contentArea.classList.remove('transitioning');
     tfIsTransitioning = false;
   };
@@ -1242,7 +1148,7 @@ function tfSwitchDay() {
   if (!prefersReducedMotion) {
     DOM.contentArea.classList.add('transitioning');
     setTimeout(finishTransition, 160);
-    setTimeout(finishTransition, 500); // safety net
+    setTimeout(finishTransition, 500);
   } else {
     finishTransition();
   }
@@ -1250,37 +1156,19 @@ function tfSwitchDay() {
 
 function tfUpdateDateDisplay() {
   const d = tfSelectedDate();
-  const dow = d.getDay();
-  DOM.dayNameEl.textContent = DAY_NAMES[dow];
-
+  DOM.dayNameEl.textContent = DAY_NAMES[d.getDay()];
   const suffix = tfGetOrdinalSuffix(tfSelectedDay);
   let dateStr = MONTH_NAMES[tfSelectedMonth] + ' ' + tfSelectedDay + suffix;
-
-  const currentYear = new Date().getFullYear();
-  if (tfSelectedYear !== currentYear) {
-    dateStr += ', ' + tfSelectedYear;
-  }
-
+  if (tfSelectedYear !== new Date().getFullYear()) dateStr += ', ' + tfSelectedYear;
+  
   DOM.dayDateEl.textContent = dateStr;
   DOM.todayChip.style.display = tfIsToday() ? 'none' : 'inline-flex';
-
-  if (tfIsToday()) {
-    DOM.dayNameEl.classList.add('is-today');
-    DOM.dayDateEl.classList.add('is-today');
-  } else {
-    DOM.dayNameEl.classList.remove('is-today');
-    DOM.dayDateEl.classList.remove('is-today');
-  }
+  DOM.dayNameEl.classList.toggle('is-today', tfIsToday());
+  DOM.dayDateEl.classList.toggle('is-today', tfIsToday());
 }
 
-function tfLoadTodos() {
-  tfTodos = Storage.getTodos(tfSelectedDate());
-}
-
-function tfSaveTodos() {
-  Storage.setTodos(tfSelectedDate(), tfTodos);
-}
-
+function tfLoadTodos() { tfTodos = Storage.getTodos(tfSelectedDate()); }
+function tfSaveTodos() { Storage.setTodos(tfSelectedDate(), tfTodos); }
 function tfGetFilteredTodos() {
   switch (tfCurrentFilter) {
     case 'active': return tfTodos.filter(t => !t.completed);
@@ -1299,7 +1187,6 @@ function tfRender() {
     DOM.statsBar.style.display = 'flex';
     DOM.progressSection.style.display = 'block';
     DOM.activeCountEl.textContent = activeTodos.length;
-
     const pct = Math.round((completedTodos.length / total) * 100);
     DOM.progressFill.style.width = pct + '%';
     DOM.progressPct.textContent = pct + '%';
@@ -1309,32 +1196,18 @@ function tfRender() {
   }
 
   DOM.clearCompletedBtn.style.display = completedTodos.length > 0 ? 'inline-flex' : 'none';
-
   DOM.todoList.innerHTML = '';
 
   if (filtered.length === 0) {
     let emptyMsg, emptyTitle, emptyIcon;
-
     if (tfCurrentFilter === 'active' && total > 0) {
-      emptyTitle = 'No active tasks';
-      emptyMsg = 'Everything is done. Well played.';
-      emptyIcon = 'ph ph-smiley';
+      emptyTitle = 'No active tasks'; emptyMsg = 'Everything is done. Well played.'; emptyIcon = 'ph ph-smiley';
     } else if (tfCurrentFilter === 'completed' && total > 0) {
-      emptyTitle = 'Nothing completed yet';
-      emptyMsg = 'Complete some tasks to see them here.';
-      emptyIcon = 'ph ph-check-circle';
+      emptyTitle = 'Nothing completed yet'; emptyMsg = 'Complete some tasks to see them here.'; emptyIcon = 'ph ph-check-circle';
     } else {
-      emptyTitle = 'All clear';
-      emptyMsg = 'Add your first task to get started.';
-      emptyIcon = 'ph ph-clipboard-text';
+      emptyTitle = 'All clear'; emptyMsg = 'Add your first task to get started.'; emptyIcon = 'ph ph-clipboard-text';
     }
-
-    DOM.todoList.innerHTML =
-      '<div class="empty-state">' +
-        '<div class="empty-icon"><i class="' + emptyIcon + '"></i></div>' +
-        '<p class="empty-title">' + escapeHtml(emptyTitle) + '</p>' +
-        '<p class="empty-desc">' + escapeHtml(emptyMsg) + '</p>' +
-      '</div>';
+    DOM.todoList.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="${emptyIcon}"></i></div><p class="empty-title">${escapeHtml(emptyTitle)}</p><p class="empty-desc">${escapeHtml(emptyMsg)}</p></div>`;
     return;
   }
 
@@ -1345,37 +1218,33 @@ function tfRender() {
     item.dataset.id = todo.id;
 
     if (tfEditingId === todo.id) {
-      item.innerHTML =
-        '<div class="checkbox-wrapper">' +
-          '<input type="checkbox" ' + (todo.completed ? 'checked' : '') + ' aria-label="Mark task complete">' +
-          '<div class="checkbox-visual">' +
-            '<svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg>' +
-          '</div>' +
-        '</div>' +
-        '<input type="text" class="edit-input" value="' + escapeAttr(todo.text) + '" maxlength="200" aria-label="Edit task">' +
-        '<div class="todo-actions" style="opacity:1">' +
-          '<button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>' +
-          '<button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>' +
-        '</div>';
+      item.innerHTML = `
+        <div class="checkbox-wrapper">
+          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
+          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
+        </div>
+        <input type="text" class="edit-input" value="${escapeAttr(todo.text)}" maxlength="200" aria-label="Edit task">
+        <div class="todo-actions" style="opacity:1">
+          <button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>
+          <button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>
+        </div>`;
     } else {
-      item.innerHTML =
-        '<div class="checkbox-wrapper">' +
-          '<input type="checkbox" ' + (todo.completed ? 'checked' : '') + ' aria-label="Mark task complete">' +
-          '<div class="checkbox-visual">' +
-            '<svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg>' +
-          '</div>' +
-        '</div>' +
-        '<span class="todo-text">' + escapeHtml(todo.text) + '</span>' +
-        '<div class="todo-actions">' +
-          '<button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>' +
-          '<button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>' +
-        '</div>';
+      item.innerHTML = `
+        <div class="checkbox-wrapper">
+          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
+          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
+        </div>
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+        <div class="todo-actions">
+          <button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>
+          <button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>
+        </div>`;
     }
 
     DOM.todoList.appendChild(item);
 
     const checkbox = item.querySelector('input[type="checkbox"]');
-    checkbox.addEventListener('change', () => { tfToggleTodo(todo.id); });
+    checkbox.addEventListener('change', () => tfToggleTodo(todo.id));
 
     if (tfEditingId === todo.id) {
       const editInput = item.querySelector('.edit-input');
@@ -1399,29 +1268,22 @@ function tfRender() {
         tfRender();
       };
 
-      const cancel = () => {
-        tfEditingId = null;
-        tfRender();
-      };
-
       editInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); save(); }
-        if (e.key === 'Escape') cancel();
+        if (e.key === 'Escape') { tfEditingId = null; tfRender(); }
       });
 
       saveBtn.addEventListener('click', save);
-      cancelBtn.addEventListener('click', cancel);
+      cancelBtn.addEventListener('click', () => { tfEditingId = null; tfRender(); });
     } else {
       const editBtn = item.querySelector('.edit-btn');
-      if (editBtn) {
-        editBtn.addEventListener('click', () => { tfEditingId = todo.id; tfRender(); });
-      }
+      if (editBtn) editBtn.addEventListener('click', () => { tfEditingId = todo.id; tfRender(); });
 
       const deleteBtn = item.querySelector('.action-btn.delete');
       if (deleteBtn) {
         deleteBtn.addEventListener('click', () => {
           item.classList.add('removing');
-          setTimeout(() => { tfDeleteTodo(todo.id); }, 300);
+          setTimeout(() => tfDeleteTodo(todo.id), 300);
         });
       }
     }
@@ -1433,14 +1295,16 @@ function tfAddTodo() {
   if (!text) {
     DOM.todoInput.focus();
     const wrapper = DOM.todoInput.closest('.input-wrapper');
-    wrapper.style.animation = 'none';
-    void wrapper.offsetHeight;
-    wrapper.style.animation = 'shake 0.4s ease';
+    if (wrapper) {
+      wrapper.style.animation = 'none';
+      void wrapper.offsetHeight;
+      wrapper.style.animation = 'shake 0.4s ease';
+    }
     return;
   }
 
   const todo = {
-    id: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9),
+    id: generateId(),
     text: text,
     completed: false,
     createdAt: Date.now()
@@ -1461,9 +1325,7 @@ function tfToggleTodo(id) {
     if (todo.completed) {
       playCompletionSfx();
       const allDone = tfTodos.length > 0 && tfTodos.every(t => t.completed);
-      if (allDone) {
-        setTimeout(play100Sfx, 250);
-      }
+      if (allDone) setTimeout(play100Sfx, 250);
     }
     tfSaveTodos();
     tfRender();
@@ -1482,10 +1344,10 @@ function tfClearCompleted() {
   tfTodos = tfTodos.filter(t => !t.completed);
   tfSaveTodos();
   tfRender();
-  showToast(count + ' task' + (count !== 1 ? 's' : '') + ' cleared', 'neutral');
+  showToast(`${count} task${count !== 1 ? 's' : ''} cleared`, 'neutral');
 }
 
-// --- INITIALIZATION & EVENT LISTENERS --- //
+// --- INITIALIZATION --- //
 function initTaskflow() {
   const now = new Date();
   tfSelectedYear = now.getFullYear();
@@ -1498,25 +1360,18 @@ function initTaskflow() {
 }
 
 if (DOM.addBtn) DOM.addBtn.addEventListener('click', tfAddTodo);
-if (DOM.todoInput) {
-  DOM.todoInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') tfAddTodo();
-  });
-}
+if (DOM.todoInput) DOM.todoInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tfAddTodo(); });
 if (DOM.clearCompletedBtn) DOM.clearCompletedBtn.addEventListener('click', tfClearCompleted);
 
 const prevDayEl = document.getElementById('prevDay');
 const nextDayEl = document.getElementById('nextDay');
-if (prevDayEl) prevDayEl.addEventListener('click', () => { tfNavigateDay(-1); });
-if (nextDayEl) nextDayEl.addEventListener('click', () => { tfNavigateDay(1); });
+if (prevDayEl) prevDayEl.addEventListener('click', () => tfNavigateDay(-1));
+if (nextDayEl) nextDayEl.addEventListener('click', () => tfNavigateDay(1));
 if (DOM.todayChip) DOM.todayChip.addEventListener('click', tfGoToToday);
 
 DOM.filterTabs.forEach((tab) => {
   tab.addEventListener('click', () => {
-    DOM.filterTabs.forEach((t) => {
-      t.classList.remove('active');
-      t.setAttribute('aria-selected', 'false');
-    });
+    DOM.filterTabs.forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
     tab.classList.add('active');
     tab.setAttribute('aria-selected', 'true');
     tfCurrentFilter = tab.dataset.filter;
