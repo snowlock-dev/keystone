@@ -64,11 +64,18 @@ function formatDurationShort(sec) {
 
 // Debounce helper, because why not 
 function debounce(fn, ms) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
-  };
+    let timer;
+
+    function wrapped(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    }
+
+    wrapped.cancel = () => {
+        clearTimeout(timer);
+    };
+
+    return wrapped;
 }
 
 // Look up a subject definition by key (fallback to first).
@@ -956,11 +963,57 @@ function exportData() {
   showToast('Backup exported to keystone.json', 'success');
 }
 
+
+function isValidBackup(parsed) {
+  if (!parsed || typeof parsed !== 'object') return false;
+
+  if (parsed.app !== APP_NAME) return false;
+
+  if (!parsed.data || typeof parsed.data !== 'object')
+    return false;
+
+  const data = parsed.data;
+
+  if (!data.notes || typeof data.notes.content !== 'string')
+    return false;
+
+  if (!data.tracker || typeof data.tracker !== 'object')
+    return false;
+
+  if (!data.tracker.goals)
+    return false;
+
+  const g = data.tracker.goals;
+
+  if (
+    typeof g.hours !== 'number' ||
+    typeof g.minutes !== 'number' ||
+    typeof g.questions !== 'number'
+  )
+    return false;
+
+  if (
+    !data.tracker.days ||
+    typeof data.tracker.days !== 'object'
+  )
+    return false;
+
+  return true;
+}
+
+
 function handleImportFile(file) {
   if (!file || !file.name.endsWith('.json')) {
     showToast('Please select a keystone.json file', 'error');
     return;
   }
+
+  if (!isValidBackup(parsed)) {
+    showToast("Invalid backup file", "error");
+    return;
+  }
+
+  saveNotesDebounced.cancel();
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -970,7 +1023,7 @@ function handleImportFile(file) {
         showToast('Invalid backup format', 'error');
         return;
       }
-      Storage.replaceAll(parsed.data);
+      Storage.replaceAll(structuredClone(parsed.data));
       showToast('keystone.json loaded! Reloading…', 'success');
       setTimeout(() => location.reload(), 1000);
     } catch (err) {
