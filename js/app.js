@@ -609,3 +609,375 @@ DOM.saveModalBtn.addEventListener('click', () => {
 });
 
 
+// -- DASHBOARD: STATS COMPUTATION -- //
+
+// Total seconds for sessions ending today
+function getTodayTotalSeconds() {
+  const todayStart = startOfDay(new Date()).getTime();
+  return Storage.allSessions()
+    .filter(s => new Date(s.end).getTime() >= todayStart)
+    .reduce((sum, s) => sum + s.duration, 0);
+}
+
+// Per-day totals for the last `numDays` days, keyed by day-start ms
+function computeDailyTotals(numDays) {
+  const totals = {};
+  for (let i = 0; i < numDays; i++) {
+    const d = startOfDay(new Date());
+    d.setDate(d.getDate() - i);
+    totals[d.getTime()] = 0;
+  }
+  for (const s of Storage.allSessions()) {
+    const dayStart = startOfDay(new Date(s.end)).getTime();
+    if (totals[dayStart] !== undefined) totals[dayStart] += s.duration;
+  }
+  return totals;
+}
+
+function computeTimeStreak() {
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = startOfDay(new Date());
+    d.setDate(d.getDate() - i);
+    const dayStart = d.getTime();
+    const dayEnd   = dayStart + DAY_MS;
+    const hasLogged = Storage.allSessions().some(s => {
+      const t = new Date(s.end).getTime();
+      return t >= dayStart && t < dayEnd;
+    });
+    if (hasLogged) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function computeQuestionStreak() {
+  const goal = Storage.getGoals().questions;
+  if (!goal || goal <= 0) return 0;
+
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = startOfDay(new Date());
+    d.setDate(d.getDate() - i);
+
+    if (!Storage.dayExists(d)) {
+      if (i === 0) continue; // today hasn't started yet; don't break
+      break;
+    }
+    const q = Storage.getQuestions(d);
+    const total = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
+    if (total >= goal) streak++;
+    else break;
+  }
+  return streak;
+}
+
+
+// -- DASHBOARD — RENDERING -- //
+
+function renderStats(dailyTotals) {
+  // 1. Most hours in a single day (7-day window)
+  const maxDay = Math.max(0, ...Object.values(dailyTotals));
+  DOM.statMaxDay.textContent = formatDurationShort(maxDay);
+
+  // 2. Average session duration (30-day window)
+  const thirtyDaysAgo = startOfDay(new Date()).getTime() - 29 * DAY_MS;
+  const recent = Storage.allSessions().filter(s => new Date(s.end).getTime() >= thirtyDaysAgo);
+  const avgSes = recent.length > 0
+    ? recent.reduce((a, s) => a + s.duration, 0) / recent.length
+    : 0;
+  DOM.statAvgSession.textContent = formatDurationShort(avgSes);
+
+  // 3. 7-day daily average
+  const weekTotal = Object.values(dailyTotals).reduce((a, b) => a + b, 0);
+  DOM.statAvgHrsDay.textContent = formatDurationShort(weekTotal / 7);
+
+  // 4. Time streak
+  DOM.statTimeStreak.textContent = computeTimeStreak() + ' days';
+
+  // 5. Question streak
+  DOM.statQuestionStreak.textContent = computeQuestionStreak() + ' days';
+}
+
+
+function renderPieChart() {
+  const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
+
+  const pieData = {};
+  SUBJECTS.forEach(s => { pieData[s.key] = 0; });
+
+  for (const s of Storage.allSessions()) {
+    if (new Date(s.end).getTime() >= sevenDaysAgo) {
+      pieData[s.subject] = (pieData[s.subject] || 0) + s.duration;
+    }
+  }
+
+  const total = Object.values(pieData).reduce((a, b) => a + b, 0);
+  DOM.pieTotal.textContent = formatDurationShort(total);
+
+  DOM.pieChart.innerHTML = '';
+  DOM.pieLegend.innerHTML = '';
+
+  if (total === 0) {
+    const legend = document.createElement('div');
+    legend.className = 'legend-item';
+    legend.style.color = 'var(--muted)';
+    legend.textContent = 'No data yet';
+    DOM.pieLegend.appendChild(legend);
+    return;
+  }
+
+  let startAngle = 0;
+  const R = 80, CX = 100, CY = 100;
+  const toRad = (deg) => (deg - 90) * Math.PI / 180;
+
+  for (const subj of SUBJECTS) {
+    const value = pieData[subj.key];
+    if (value === 0) continue;
+
+    const pct = value / total;
+
+    if (pct === 1) {
+      // Full circle to avoid 360* path math edge case
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', CX);
+      circle.setAttribute('cy', CY);
+      circle.setAttribute('r', R);
+      circle.setAttribute('fill', subj.color);
+      circle.setAttribute('opacity', '0.9');
+      DOM.pieChart.appendChild(circle);
+    } else {
+      const endAngle = startAngle + pct * 360;
+      const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+
+      const x1 = CX + R * Math.cos(toRad(startAngle));
+      const y1 = CY + R * Math.sin(toRad(startAngle));
+      const x2 = CX + R * Math.cos(toRad(endAngle));
+      const y2 = CY + R * Math.sin(toRad(endAngle));
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d',
+        `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+      path.setAttribute('fill', subj.color);
+      path.setAttribute('opacity', '0.9');
+      path.setAttribute('stroke', 'var(--card)');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linejoin', 'round');
+      DOM.pieChart.appendChild(path);
+
+      startAngle = endAngle;
+    }
+
+    const legend = document.createElement('div');
+    legend.className = 'legend-item';
+    legend.innerHTML =
+      `<span class="legend-dot" style="background:${subj.color}"></span> ` +
+      `${subj.name} (${Math.round(pct * 100)}%)`;
+    DOM.pieLegend.appendChild(legend);
+  }
+}
+
+
+function renderBarChart(dailyTotals) {
+  const W = 400, H = 200, PAD = 40;
+  const maxVal = Math.max(3600, ...Object.values(dailyTotals)); // min 1h scale
+  const maxH   = H - PAD * 2;
+  const stepX  = (W - PAD * 2) / 7;
+  const barW   = stepX * 0.6;
+
+  const parts = [];
+
+  // Grid lines + axis labels
+  parts.push(`<line x1="${PAD}" y1="${PAD}" x2="${W-PAD}" y2="${PAD}" class="chart-grid-line"/>`);
+  parts.push(`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" class="chart-grid-line"/>`);
+  parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${formatDurationShort(maxVal)}</text>`);
+  parts.push(`<text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" class="chart-axis-label">0m</text>`);
+
+  const allSessions = Storage.allSessions();
+
+  // Stacked bars (oldest day → leftmost)
+  for (let i = 6; i >= 0; i--) {
+    const d = startOfDay(new Date());
+    d.setDate(d.getDate() - i);
+    const dayStart = d.getTime();
+    const dayEnd   = dayStart + DAY_MS;
+
+    const x = PAD + (6 - i) * stepX + (stepX - barW) / 2;
+    let currentY = H - PAD;
+
+    for (const subj of SUBJECTS) {
+      const subjDur = allSessions
+        .filter(s => s.subject === subj.key
+          && new Date(s.end).getTime() >= dayStart
+          && new Date(s.end).getTime() <  dayEnd)
+        .reduce((sum, s) => sum + s.duration, 0);
+
+      if (subjDur > 0) {
+        const barH = (subjDur / maxVal) * maxH;
+        currentY -= barH;
+        parts.push(
+          `<rect x="${x}" y="${currentY}" width="${barW}" height="${barH}" ` +
+          `fill="${subj.color}" rx="2" class="bar-chart-bar">` +
+          `<title>${subj.name}: ${formatDurationShort(subjDur)}</title></rect>`
+        );
+      }
+    }
+
+    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    parts.push(`<text x="${x + barW/2}" y="${H - PAD + 15}" text-anchor="middle" class="chart-axis-label">${label}</text>`);
+  }
+
+  DOM.barChart.innerHTML = parts.join('');
+}
+
+
+// -- DASHBOARD: GOALS & QUESTIONS -- //
+
+// Update only the progress text (safe to call on every input keystroke).
+function renderGoalProgress() {
+  const goals    = Storage.getGoals();
+  const q        = Storage.getQuestions(new Date());
+  const goalSecs = goals.hours * 3600 + goals.minutes * 60;
+  const todaySecs= getTodayTotalSeconds();
+  const totalQ   = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
+
+  DOM.timeGoalText.textContent = `${formatDurationShort(todaySecs)} / ${formatDurationShort(goalSecs)}`;
+  DOM.timeGoalText.classList.toggle('met', goalSecs > 0 && todaySecs >= goalSecs);
+
+  DOM.questionsGoalText.textContent = `${totalQ} / ${goals.questions}`;
+  DOM.questionsGoalText.classList.toggle('met', goals.questions > 0 && totalQ >= goals.questions);
+}
+
+// Full goals render: syncs input values from storage (call on init / data change)
+function renderGoals() {
+  const goals = Storage.getGoals();
+  const q     = Storage.getQuestions(new Date());
+
+  DOM.goalHours.value     = goals.hours;
+  DOM.goalMinutes.value   = goals.minutes;
+  DOM.questionsGoal.value = goals.questions;
+  DOM.qPhy.value          = q.phy;
+  DOM.qChem.value         = q.chem;
+  DOM.qMaths.value        = q.maths;
+
+  renderGoalProgress();
+}
+
+// Goal input listeners
+[DOM.goalHours, DOM.goalMinutes, DOM.questionsGoal].forEach(input => {
+  input.addEventListener('input', () => {
+    Storage.setGoals({
+      hours:     parseInt(DOM.goalHours.value,     10) || 0,
+      minutes:   parseInt(DOM.goalMinutes.value,   10) || 0,
+      questions: parseInt(DOM.questionsGoal.value, 10) || 0
+    });
+    renderGoalProgress();
+  });
+});
+
+// Question input listeners
+[DOM.qPhy, DOM.qChem, DOM.qMaths].forEach(input => {
+  input.addEventListener('input', () => {
+    Storage.setQuestions(new Date(), {
+      phy:   parseInt(DOM.qPhy.value,   10) || 0,
+      chem:  parseInt(DOM.qChem.value,  10) || 0,
+      maths: parseInt(DOM.qMaths.value, 10) || 0
+    });
+    renderGoalProgress();
+  });
+});
+
+
+function renderDashboard() {
+  const dailyTotals = computeDailyTotals(7);
+  renderStats(dailyTotals);
+  renderPieChart();
+  renderBarChart(dailyTotals);
+  renderGoals();
+}
+
+function renderAll() {
+  renderSessionLog();
+  renderDashboard();
+}
+
+
+/* =============================================================
+ * BACKUP & RESTORE
+ * -------------------------------------------------------------
+ * Export wraps the storage data with metadata. Import validates
+ * and replaces all data, then reloads.
+ * ============================================================= */
+function exportData() {
+  const payload = {
+    app:        APP_NAME,
+    version:    APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data:       Storage.read()
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'keystone.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('Backup exported to keystone.json', 'success');
+}
+
+function handleImportFile(file) {
+  if (!file || !file.name.endsWith('.json')) {
+    showToast('Please select a keystone.json file', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || !parsed.data) {
+        showToast('Invalid backup format', 'error');
+        return;
+      }
+      Storage.replaceAll(parsed.data);
+      showToast('keystone.json loaded! Reloading…', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+      showToast('Error reading JSON file', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+DOM.exportBtn.addEventListener('click', exportData);
+DOM.importBtn.addEventListener('click', () => DOM.importFileInput.click());
+DOM.importFileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    handleImportFile(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+
+// -- KEYBOARD SHORTCUTS -- //
+window.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + 1-4 -> switch section
+  if ((e.ctrlKey || e.metaKey) && KEYBOARD_SHORTCUTS[e.key]) {
+    e.preventDefault();
+    switchSection(KEYBOARD_SHORTCUTS[e.key]);
+    return;
+  }
+
+  // Arrow keys -> calendar navigation
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  if (e.key === 'ArrowLeft')  navigateCalendar(-1);
+  if (e.key === 'ArrowRight') navigateCalendar(1);
+});
+
+renderAll();
