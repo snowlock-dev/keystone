@@ -18,3 +18,5 @@ It tries to combine all of the features I love from different apps/websites, whi
 ## Credits
 
 * `assets/wallpaper.jpg`(Default Wallpaper) from: [Wallhaven](https://wallhaven.cc/w/nm6o2k)
+
+* `assets/ph-fill` / `assets/ph-regular`: [Phosphor Icons](https://phosphoricons.com/)
