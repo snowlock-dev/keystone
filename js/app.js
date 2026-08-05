@@ -1,4 +1,8 @@
-console.log("Keystone initialized!");
+console.log(
+  "%cKeystone v0.2 Initialized!%c\nStudy smart. Track everything.",
+  "color: #8b5cf6; font-size: 20px; font-weight: 900;",
+  "color: #6b7280; font-size: 12px; margin-top: 4px; display: block;"
+);
 
 // State object to hold app data
 const state = {
