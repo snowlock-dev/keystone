@@ -3,8 +3,11 @@ const APP_VERSION = "1";
 const STORAGE_KEY = "keystone";
 const DAY_MS      = 86_400_000;
 
+const _initRaw = localStorage.getItem(STORAGE_KEY) || '';
+const _initKB  = (new TextEncoder().encode(_initRaw).length / 1024).toFixed(2);
+
 console.log(
-  "%cKeystone v" + APP_VERSION + " Initialized!%c\nStudy smart. Track everything.",
+  `%cKeystone v${APP_VERSION} Initialized!%c\nStudy smart. Track everything.\nStorage used: ${_initKB} KB`,
   "color: #8b5cf6; font-size: 18px; font-weight: 900;",
   "color: #6b7280; font-size: 12px; margin-top: 4px; display: block;"
 );
@@ -74,6 +77,21 @@ function formatDurationShort(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function checkStorageSize() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  
+  // TextEncoder accurately converts strings to UTF-8 bytes
+  const bytes = new TextEncoder().encode(raw).length;
+  const MB = bytes / (1024 * 1024);
+  
+  if (MB > 4) {
+    const warningMsg = `Storage size is ${MB.toFixed(2)}MB. Approaching the 5MB limit.`;
+    console.warn("Keystone:", warningMsg);
+    showToast(warningMsg, 'error'); // 'error' gives it the red border to grab attention
+  }
 }
 
 // [IMPROVEMENT] Enhanced debounce with flush() and isPending() for safe cleanup on unload
@@ -371,6 +389,8 @@ const Storage = {
                 createdAt: Date.now()
               }))
               .filter(t => t.text.trim() !== "");
+
+            localStorage.removeItem('myTasks'); 
           }
         }
       } catch (err) {
@@ -1781,6 +1801,7 @@ function handleImportFile(file) {
       }
       saveNotesDebounced.cancel();
       Storage.replaceAll(parsed.data);
+      checkStorageSize();
       showToast('Backup loaded successfully! Reloading…', 'success');
       setTimeout(() => location.reload(), 1000);
     } catch (err) {
@@ -1827,6 +1848,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 renderAll();
+checkStorageSize();
 
 
 // TASKFLOW FRONTEND LOGIC
