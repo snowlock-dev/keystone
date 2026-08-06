@@ -590,6 +590,16 @@ const Storage = {
       draft.errors = draft.errors.filter(e => e.id !== id);
       return draft.errors.length !== before;
     });
+  },
+  updateErrorTakeaway(id, takeaway) {
+    return this.transaction(draft => {
+      const err = draft.errors.find(e => e.id === id);
+      if (err) {
+        err.takeaway = takeaway;
+        return true;
+      }
+      return false;
+    });
   }
 };
 
@@ -1553,12 +1563,13 @@ function initErrorFilters() {
   });
 }
 
+let editingErrorId = null;
+
 function renderErrorLog() {
   if (!DOM.errorLogList) return;
   
   let errors = Storage.getErrors().slice().sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // Apply combinations of filters
   if (errFilterSubject !== 'all') errors = errors.filter(e => e.subject === errFilterSubject);
   if (errFilterType !== 'all') errors = errors.filter(e => e.errorType === errFilterType);
 
@@ -1573,33 +1584,52 @@ function renderErrorLog() {
     const subj = subjectByKey(e.subject);
     const typeColor = getErrorTypeColor(e.errorType);
     
-    // Format date to be highly human readable (e.g., "Monday, October 14, 2024")
     const dateObj = new Date(e.date);
     const formattedDate = dateObj.toLocaleDateString(undefined, { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     });
     
-    // Parse Markdown for the takeaway text (with safe fallback)
-    let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); // Fallback to plain text
-    if (typeof marked !== 'undefined') {
-      try {
-        marked.setOptions({ breaks: true, gfm: true });
-        parsedTakeaway = marked.parse(e.takeaway || "");
-      } catch (err) {
-        console.error("Markdown parsing failed:", err);
+    let takeawayHtml = '';
+    let actionsHtml = '';
+
+    if (editingErrorId === e.id) {
+      // Edit Mode UI
+      takeawayHtml = `
+        <textarea class="error-edit-input" id="errorEditInput-${e.id}" rows="4" placeholder="Edit your takeaway...">${escapeHtml(e.takeaway)}</textarea>
+        <div class="error-edit-actions">
+          <button class="error-save-btn" data-id="${e.id}"><i class="ph ph-check"></i> Save</button>
+          <button class="error-cancel-btn" data-id="${e.id}"><i class="ph ph-x"></i> Cancel</button>
+        </div>
+      `;
+    } else {
+      // Normal Mode UI
+      let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); 
+      if (typeof marked !== 'undefined') {
+        try {
+          marked.setOptions({ breaks: true, gfm: true });
+          parsedTakeaway = marked.parse(e.takeaway || "");
+        } catch (err) {
+          console.error("Markdown parsing failed:", err);
+        }
       }
+      takeawayHtml = `<div class="error-takeaway markdown-body">${parsedTakeaway}</div>`;
+      
+      actionsHtml = `
+        <button class="error-action-btn error-edit-btn" data-id="${e.id}" aria-label="Edit description">
+          <i class="ph ph-pencil-simple"></i>
+        </button>
+        <button class="error-action-btn error-delete-btn" data-id="${e.id}" aria-label="Delete error">
+          <i class="ph ph-trash"></i>
+        </button>
+      `;
     }
     
     const card = document.createElement('div');
     card.className = 'error-card';
-    
     card.innerHTML = `
-      <button class="error-delete-btn" data-id="${e.id}" aria-label="Delete error">
-        <i class="ph ph-x"></i>
-      </button>
+      <div class="error-actions-top">
+        ${actionsHtml}
+      </div>
       <div class="error-content">
         <h3 class="error-chapter">${escapeHtml(e.chapter)}</h3>
         <p class="error-date">${formattedDate}</p>
@@ -1615,45 +1645,50 @@ function renderErrorLog() {
         
         <div class="error-divider"></div>
         
-        <div class="error-takeaway markdown-body">${parsedTakeaway}</div>
+        ${takeawayHtml}
       </div>
     `;
     DOM.errorLogList.appendChild(card);
   });
-}
 
-if (DOM.addErrorForm) {
-  DOM.addErrorForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const err = {
-      id: generateId(),
-      date: new Date().toISOString(),
-      subject: DOM.errorSubjectSelect.value,
-      chapter: DOM.errorChapterInput.value.trim() || 'General',
-      errorType: DOM.errorTypeSelect.value,
-      takeaway: DOM.errorTakeawayInput.value.trim()
-    };
-    if (!err.takeaway) { showToast('Please enter a takeaway', 'error'); return; }
-    Storage.addError(err);
-    showToast('Error logged', 'success');
-    DOM.addErrorForm.reset();
-    renderErrorLog();
-    // Find this block in app.js inside the DOM.addErrorForm event listener
-  if (!err.takeaway) { 
-    showToast('Please enter a takeaway', 'error'); 
-    return; 
+  // Focus the textarea if we are editing
+  if (editingErrorId) {
+    const ta = document.getElementById(`errorEditInput-${editingErrorId}`);
+    if (ta) {
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
   }
-  });
 }
 
 if (DOM.errorLogList) {
   DOM.errorLogList.addEventListener('click', (e) => {
-    // Changed from .log-item-delete to .error-delete-btn
-    const btn = e.target.closest('.error-delete-btn');
-    if (!btn) return;
-    Storage.removeError(btn.dataset.id);
-    showToast('Error removed', 'neutral');
-    renderErrorLog();
+    const editBtn = e.target.closest('.error-edit-btn');
+    const cancelBtn = e.target.closest('.error-cancel-btn');
+    const saveBtn = e.target.closest('.error-save-btn');
+    const deleteBtn = e.target.closest('.error-delete-btn');
+
+    if (editBtn) {
+      editingErrorId = editBtn.dataset.id;
+      renderErrorLog();
+    } else if (cancelBtn) {
+      editingErrorId = null;
+      renderErrorLog();
+    } else if (saveBtn) {
+      const id = saveBtn.dataset.id;
+      const textarea = document.getElementById(`errorEditInput-${id}`);
+      if (textarea) {
+        const newTakeaway = textarea.value.trim();
+        Storage.updateErrorTakeaway(id, newTakeaway);
+        editingErrorId = null;
+        renderErrorLog();
+        showToast('Error updated', 'success');
+      }
+    } else if (deleteBtn) {
+      Storage.removeError(deleteBtn.dataset.id);
+      showToast('Error removed', 'neutral');
+      renderErrorLog();
+    }
   });
 }
 

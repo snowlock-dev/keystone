@@ -9,7 +9,7 @@ env/
 # Build outputs & distribution folders
 dist/
 build/
-.firebase/
+/.firebase
 
 # OS generated files
 .DS_Store
