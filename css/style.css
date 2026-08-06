@@ -166,6 +166,11 @@ button:disabled {
   border-color: var(--accent);
 }
 
+.copyright {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .toast-container {
   position: fixed;
   bottom: 2rem;

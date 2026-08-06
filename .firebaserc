@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "keystone-b7070"
+  },
+  "targets": {
+    "keystone-b7070": {
+      "hosting": {
+        "production": [
+          "keystone-snowlock"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
