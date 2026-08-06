@@ -473,53 +473,55 @@
             <h1>Error Log</h1>
             <p>Your personalized Book of Mistakes. Review this before every exam.</p>
           </div>
-
-          <div class="tracker-grid">
-            <div class="tracker-panel">
-              <div class="panel-title">Log New Mistake</div>
-              <form id="addErrorForm" style="display:flex; flex-direction:column; gap:1rem;">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label class="form-label">Subject</label>
-                    <select id="errorSubjectSelect" class="form-select">
-                      <option value="physics">Physics</option>
-                      <option value="chem">Chemistry</option>
-                      <option value="maths">Maths</option>
-                      <option value="mock">Mock Tests</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Chapter / Topic</label>
-                    <input type="text" id="errorChapterInput" class="form-input" placeholder="e.g., Rotational Motion">
-                  </div>
-                </div>
+        
+          <!-- INPUT MODAL SECTION -->
+          <div class="tracker-panel">
+            <div class="panel-title">Log New Mistake</div>
+            <form id="addErrorForm" style="display:flex; flex-direction:column; gap:1.5rem;">
+              <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">Error Type</label>
-                  <select id="errorTypeSelect" class="form-select">
-                    <option value="Conceptual Gap">Conceptual Gap</option>
-                    <option value="Silly Mistake">Silly Mistake</option>
-                    <option value="Calculation Error">Calculation Error</option>
-                    <option value="Others">Others</option>
+                  <label class="form-label">Subject</label>
+                  <select id="errorSubjectSelect" class="form-select">
+                    <option value="physics">Physics</option>
+                    <option value="chem">Chemistry</option>
+                    <option value="maths">Maths</option>
+                    <option value="mock">Mock Tests</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Key Takeaway (What did you learn?)</label>
-                  <input type="text" id="errorTakeawayInput" class="form-input" placeholder="e.g., Remember to check domain of log(x)" required>
+                  <label class="form-label">Chapter / Topic</label>
+                  <input type="text" id="errorChapterInput" class="form-input" placeholder="e.g., Rotational Motion">
                 </div>
-                <button type="submit" class="add-btn" style="justify-content: center;">Log Mistake</button>
-              </form>
-            </div>
-
-            <div class="tracker-panel">
-              <div class="panel-title">Recent Mistakes</div>
-
-              <div class="error-filters">
-                <div class="filter-tabs" id="errorSubjectFilters"></div>
-                <div class="filter-tabs" id="errorTypeFilters"></div>
               </div>
-
-              <div id="errorLogList"></div>
+              <div class="form-group">
+                <label class="form-label">Error Type</label>
+                <select id="errorTypeSelect" class="form-select">
+                  <option value="Conceptual Gap">Conceptual Gap</option>
+                  <option value="Silly Mistake">Silly Mistake</option>
+                  <option value="Calculation Error">Calculation Error</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Key Takeaway (What did you learn?)</label>
+                <input type="text" id="errorTakeawayInput" class="form-input" placeholder="e.g., Remember to check domain of log(x)" required>
+              </div>
+              <button type="submit" class="add-btn" style="justify-content: center; margin-top: 0.5rem;">Log Mistake</button>
+            </form>
+          </div>
+        
+          <!-- ERROR LOGS LIST SECTION (Massive grid below the input) -->
+          <div class="tracker-panel" style="margin-top: 2rem;">
+            <div class="panel-header-row" style="margin-bottom: 2rem;">
+              <h2 class="panel-title" style="margin-bottom: 0; font-size: 1.2rem;">Recent Mistakes</h2>
             </div>
+          
+            <div class="error-filters">
+              <div class="filter-tabs" id="errorSubjectFilters"></div>
+              <div class="filter-tabs" id="errorTypeFilters"></div>
+            </div>
+          
+            <div id="errorLogList"></div>
           </div>
         </div>
 
@@ -527,6 +529,7 @@
     </main>
   </div>
 
+  <script src="assets/marked.min.js" defer></script>
   <script src="js/app.js" defer></script>
 </body>
 </html>

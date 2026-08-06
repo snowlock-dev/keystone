@@ -1565,7 +1565,7 @@ function renderErrorLog() {
   DOM.errorLogList.innerHTML = '';
   
   if (errors.length === 0) {
-    DOM.errorLogList.innerHTML = '<div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem;grid-column: 1 / -1;">No errors match your filters.</div>';
+    DOM.errorLogList.innerHTML = '<div class="error-empty-state">No errors match your filters.</div>';
     return;
   }
 
@@ -1573,29 +1573,49 @@ function renderErrorLog() {
     const subj = subjectByKey(e.subject);
     const typeColor = getErrorTypeColor(e.errorType);
     
+    // Format date to be highly human readable (e.g., "Monday, October 14, 2024")
+    const dateObj = new Date(e.date);
+    const formattedDate = dateObj.toLocaleDateString(undefined, { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    // Parse Markdown for the takeaway text (with safe fallback)
+    let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); // Fallback to plain text
+    if (typeof marked !== 'undefined') {
+      try {
+        marked.setOptions({ breaks: true, gfm: true });
+        parsedTakeaway = marked.parse(e.takeaway || "");
+      } catch (err) {
+        console.error("Markdown parsing failed:", err);
+      }
+    }
+    
     const card = document.createElement('div');
     card.className = 'error-card';
-    // Add colored top border based on error type
-    card.style.borderTop = `4px solid ${typeColor}`;
     
     card.innerHTML = `
-      <div class="error-card-header">
-        <div class="log-item-icon" style="background:${subj.color}22;color:${subj.color}">
-          <i class="ph-fill ${subj.icon}"></i>
+      <button class="error-delete-btn" data-id="${e.id}" aria-label="Delete error">
+        <i class="ph ph-x"></i>
+      </button>
+      <div class="error-content">
+        <h3 class="error-chapter">${escapeHtml(e.chapter)}</h3>
+        <p class="error-date">${formattedDate}</p>
+        
+        <div class="error-tags">
+          <span class="error-tag" style="background:${subj.color}22;color:${subj.color}">
+            <i class="ph-fill ${subj.icon}"></i> ${subj.name}
+          </span>
+          <span class="error-tag" style="background:${typeColor}22;color:${typeColor}">
+            ${escapeHtml(e.errorType)}
+          </span>
         </div>
-        <div class="error-card-info">
-          <div class="log-item-subject">${escapeHtml(e.chapter)}</div>
-          <div class="log-item-desc">${subj.name} • ${new Date(e.date).toLocaleDateString()}</div>
-        </div>
-        <button class="log-item-delete" data-id="${e.id}" aria-label="Delete error">
-          <i class="ph ph-x"></i>
-        </button>
-      </div>
-      <div class="error-card-body">
-        <span class="error-type-badge" style="background:${typeColor}22;color:${typeColor}">
-          ${escapeHtml(e.errorType)}
-        </span>
-        <p class="error-takeaway">${escapeHtml(e.takeaway)}</p>
+        
+        <div class="error-divider"></div>
+        
+        <div class="error-takeaway markdown-body">${parsedTakeaway}</div>
       </div>
     `;
     DOM.errorLogList.appendChild(card);
@@ -1628,7 +1648,8 @@ if (DOM.addErrorForm) {
 
 if (DOM.errorLogList) {
   DOM.errorLogList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.log-item-delete');
+    // Changed from .log-item-delete to .error-delete-btn
+    const btn = e.target.closest('.error-delete-btn');
     if (!btn) return;
     Storage.removeError(btn.dataset.id);
     showToast('Error removed', 'neutral');

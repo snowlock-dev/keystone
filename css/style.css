@@ -21,6 +21,9 @@
   --success: #5cab7a;
   --danger: #e45a5c;
   --info: #5c9bd4;
+
+  --code-color: #cac0ff;
+  --code-bg: #1c1c1c;
 }
 
 * {
@@ -1091,13 +1094,16 @@ button:disabled {
 }
 
 .modal-card {
-  border-radius: 16px;
+  border-radius: 18px; /* Slightly more rounded for spacious feel */
   width: 100%;
-  max-width: 450px;
-  padding: 2rem;
+  max-width: 540px; /* Increased max width */
+  padding: 2.5rem; /* Increased padding significantly */
 }
 
-.modal-card h3 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+.modal-card h3 { 
+  font-size: 1.6rem; 
+  margin-bottom: 2rem; /* Increased margin */
+}
 
 .panel-title, .form-label {
   font-size: 0.8rem;
@@ -1125,7 +1131,7 @@ button:disabled {
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem; /* Increased gap for breathing room */
   flex: 1;
   min-width: 200px;
 }
@@ -1135,7 +1141,7 @@ button:disabled {
   background: var(--surface);
   border: 2px solid var(--border);
   border-radius: 8px;
-  padding: 0.65rem 0.75rem;
+  padding: 0.85rem 1rem; /* Increased padding inside inputs */
   color: var(--fg);
   transition: border-color 0.2s;
 }
@@ -1456,11 +1462,11 @@ button:disabled {
 
 .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
 
-.modal-body { display: flex; flex-direction: column; gap: 1rem; }
-.modal-footer { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
+.modal-body { display: flex; flex-direction: column; gap: 1.5rem; /* Increased gap */ }
+.modal-footer { display: flex; justify-content: flex-end; gap: 1.25rem; margin-top: 2.5rem; /* Increased spacing */ }
 
 .modal-btn { 
-  padding: 0.5rem 1.5rem; 
+  padding: 0.75rem 1.75rem; /* Larger padding for buttons */
   border-radius: 9px; 
 }
 
@@ -1476,7 +1482,7 @@ button:disabled {
 }
 
 
-.form-row { display: flex; gap: 1rem; }
+.form-row { display: flex; gap: 1.25rem; /* Increased gap */ }
 .form-row .form-group { min-width: 0; }
 
 
@@ -1555,11 +1561,12 @@ body.zen-mode .clock-hint {
 }
 
 /* Error Log Cards & Filters */
+/* Error Log Cards & Filters */
 .error-filters {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 .error-filters .filter-tabs {
   overflow-x: auto;
@@ -1571,63 +1578,247 @@ body.zen-mode .clock-hint {
 .error-filters .filter-tab {
   white-space: nowrap;
   flex: 0 0 auto;
+  padding: 10px 18px;
+  font-size: 0.95rem;
 }
 
 #errorLogList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  max-height: 600px;
-  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); /* MASSIVE wide cards */
+  gap: 2rem; /* Huge gap between cards */
   padding-right: 0.5rem;
 }
 
 .error-card {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 20px; /* More rounded for a massive feel */
+  padding: 3rem; /* MASSIVE padding inside the card */
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: border-color 0.2s, transform 0.2s;
-}
-.error-card:hover {
-  border-color: #3A3A3A;
-  transform: translateY(-2px);
 }
 
-.error-card-header {
+.error-card:hover {
+  border-color: #3A3A3A;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+
+.error-delete-btn {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s;
 }
-.error-card-info {
-  flex: 1;
-  min-width: 0;
+.error-delete-btn:hover {
+  color: var(--danger);
+  background: rgba(228, 90, 92, 0.1);
 }
-.error-card-body {
-  padding: 1rem;
+
+.error-content {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
-.error-type-badge {
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.error-takeaway {
-  font-size: 0.9rem;
+
+.error-chapter {
+  font-size: 2rem; /* MASSIVE chapter title */
+  font-weight: 700;
   color: var(--fg);
-  line-height: 1.4;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.75rem;
+  padding-right: 3rem; /* Prevent overlap with delete button */
+  line-height: 1.2;
+}
+
+.error-date {
+  font-size: 1.05rem; /* Readable date size */
+  color: var(--muted);
+  margin-bottom: 2rem;
+  font-weight: 400;
+}
+
+.error-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.error-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem; /* Thick, pill-like tags */
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.error-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 2rem;
+}
+
+.error-takeaway {
+  font-size: 1.15rem; 
+  line-height: 1.7;
+  color: var(--fg); /* Strictly white */
+  font-weight: 400;
+}
+
+/* Aggressively force all base text elements to white */
+.error-takeaway.markdown-body,
+.error-takeaway.markdown-body p,
+.error-takeaway.markdown-body span,
+.error-takeaway.markdown-body li,
+.error-takeaway.markdown-body strong,
+.error-takeaway.markdown-body h1,
+.error-takeaway.markdown-body h2,
+.error-takeaway.markdown-body h3,
+.error-takeaway.markdown-body h4 {
+  color: var(--fg);
+}
+
+.error-takeaway.markdown-body > *:first-child {
+  margin-top: 0;
+}
+.error-takeaway.markdown-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.error-takeaway.markdown-body p {
+  margin-bottom: 1rem;
+}
+
+.error-takeaway.markdown-body h1,
+.error-takeaway.markdown-body h2,
+.error-takeaway.markdown-body h3,
+.error-takeaway.markdown-body h4 {
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.error-takeaway.markdown-body h1 { font-size: 1.5rem; }
+.error-takeaway.markdown-body h2 { font-size: 1.35rem; }
+.error-takeaway.markdown-body h3 { font-size: 1.2rem; }
+.error-takeaway.markdown-body h4 { font-size: 1.1rem; }
+
+.error-takeaway.markdown-body ul,
+.error-takeaway.markdown-body ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-takeaway.markdown-body ul {
+  list-style-type: disc;
+}
+
+.error-takeaway.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.error-takeaway.markdown-body li {
+  margin-bottom: 0.5rem;
+}
+
+.error-takeaway.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity 0.2s;
+}
+
+.error-takeaway.markdown-body a:hover {
+  opacity: 0.8;
+}
+
+/* Code blocks and inline code using your specific colors */
+.error-takeaway.markdown-body code {
+  background: var(--code-bg);
+  color: var(--code-color);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+  border: 1px solid var(--border);
+}
+
+.error-takeaway.markdown-body pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.error-takeaway.markdown-body pre code {
+  background: transparent;
+  color: var(--code-color);
+  padding: 0;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.error-takeaway.markdown-body blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 1rem;
+  margin: 0 0 1rem 0;
+  color: #d0d0d0; /* Slightly darker for blockquotes */
+}
+
+/* Italic text - a smidge darker */
+.error-takeaway.markdown-body em,
+.error-takeaway.markdown-body i {
+  color: #d0d0d0; /* Slightly darker than white */
+  font-style: italic;
+}
+
+.error-takeaway.markdown-body strong {
+  font-weight: 700;
+}
+
+.error-takeaway.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.error-takeaway.markdown-body th,
+.error-takeaway.markdown-body td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.error-takeaway.markdown-body th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.error-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 5rem 2rem;
+  color: var(--muted);
+  font-size: 1.1rem;
 }
 
 .form-select {
@@ -1942,11 +2133,12 @@ body.zen-mode .clock-hint {
 
   /* Modal */
   .modal-card {
-    padding: 1.25rem;
+    padding: 1.75rem; /* Maintained spaciousness on mobile */
   }
 
   .modal-footer {
     flex-direction: column;
+    gap: 1rem; /* Adjusted gap for column layout */
   }
 
   .modal-btn {
@@ -1955,6 +2147,7 @@ body.zen-mode .clock-hint {
 
   .form-row {
     flex-direction: column;
+    gap: 1.5rem; /* Maintained spaciousness on mobile */
   }
 }
 
@@ -2017,5 +2210,6 @@ body.zen-mode .clock-hint {
   
   #errorLogList {
     grid-template-columns: 1fr;
+    gap: 1.25rem; /* Maintained gap on mobile */
   }
 }

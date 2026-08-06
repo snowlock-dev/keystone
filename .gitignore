@@ -9,8 +9,7 @@ env/
 # Build outputs & distribution folders
 dist/
 build/
-*.min.css
-*.min.js
+.firebase/
 
 # OS generated files
 .DS_Store
