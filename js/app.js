@@ -2004,7 +2004,7 @@ window.addEventListener('storage', (e) => {
   Storage._cache = null;
   Storage._invalidateSessionsCache();
 
-  // Reload latest data — normalizeData handles any invalid or missing fields
+  // Reload latest data
   Storage.read();
 
   // Restore active session if it was updated in another tab.
@@ -2012,7 +2012,7 @@ window.addEventListener('storage', (e) => {
   if (saved && (saved.startedAt || saved.isPaused)) {
     Object.assign(activeTracker, saved);
   } else {
-    resetActiveTrackerFields(); // In-memory only — does NOT persist
+    resetActiveTrackerFields(); // In-memory only
   }
   DOM.subjectSelect.value = activeTracker.subject;
   DOM.sessionDesc.value = activeTracker.description;
@@ -2030,8 +2030,7 @@ window.addEventListener('storage', (e) => {
   tfLoadTodos();
   tsLoadTodos();
 
-  // Re-render everything — these are read-only operations and will NOT
-  // trigger further storage writes, preventing any update loop.
+  // Re-render everything
   renderAll();
   tfRender();
   tsRender();
