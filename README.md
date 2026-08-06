@@ -6,6 +6,7 @@ Keystone is my attempt at a private, local-first workspace website.
 
 It tries to combine all of the features I love from different apps/websites, while also allowing easy backups and a seamless experience.
 
+
 ## Plans
 
 - [x] Make a placeholder `index.html`
@@ -16,7 +17,6 @@ It tries to combine all of the features I love from different apps/websites, whi
 - [x] Add a good todo section
 - [x] Add a test dashboard
 - [x] Add a error dashboard
-
 
 ## Credits
 
