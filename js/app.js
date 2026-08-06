@@ -702,6 +702,7 @@ const DOM = {
   testHistoryList:   $('testHistoryList'),
   addTestForm:       $('addTestForm'),
   testNameInput:     $('testNameInput'),
+  testDateInput:     $('testDateInput'),
   testTotalInput:    $('testTotalInput'),
   testObtainedInput: $('testObtainedInput'),
   testAccuracyInput: $('testAccuracyInput'),
@@ -1372,8 +1373,12 @@ function renderTestDashboard() {
   } else {
     const last = tests[tests.length - 1];
     const last3 = tests.slice(-3);
-    const avgScore = last3.reduce((sum, t) => sum + (t.obtainedMarks / t.totalMarks) * 100, 0) / last3.length;
+    
+    // Calculate average obtained and total marks instead of percentage
+    const avgObtained = last3.reduce((sum, t) => sum + t.obtainedMarks, 0) / last3.length;
+    const avgTotal = last3.reduce((sum, t) => sum + t.totalMarks, 0) / last3.length;
     const avgAcc = last3.reduce((sum, t) => sum + t.accuracy, 0) / last3.length;
+    
     DOM.testStatsCards.innerHTML = `
       <div class="stat-card">
         <div class="stat-icon"><i class="ph-fill ph-flag-checkered"></i></div>
@@ -1384,7 +1389,7 @@ function renderTestDashboard() {
       <div class="stat-card">
         <div class="stat-icon"><i class="ph-fill ph-chart-line-up"></i></div>
         <div class="stat-label">Predicted Score</div>
-        <div class="stat-value">${avgScore.toFixed(1)}%</div>
+        <div class="stat-value">${Math.round(avgObtained)} / ${Math.round(avgTotal)}</div>
         <div class="stat-sub">Avg of last 3 tests</div>
       </div>
       <div class="stat-card">
@@ -1478,12 +1483,34 @@ function renderTestLineChart(tests) {
   DOM.testLineChart.innerHTML = parts.join('');
 }
 
+// Set default date to today on load
+if (DOM.testDateInput) {
+  DOM.testDateInput.value = new Date().toISOString().split('T')[0];
+}
+
+// Set default date to today on load
+if (DOM.testDateInput) {
+  DOM.testDateInput.value = new Date().toISOString().split('T')[0];
+}
+
 if (DOM.addTestForm) {
   DOM.addTestForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    
+    // Safely parse the date string to avoid timezone off-by-one errors
+    const dateStr = DOM.testDateInput.value;
+    let testDate = new Date(); // fallback to now
+    
+    if (dateStr) {
+      const parts = dateStr.split('-');
+      // parts[0] = year, parts[1] = month (0-indexed), parts[2] = day
+      testDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      testDate.setHours(new Date().getHours(), new Date().getMinutes()); // Add current time so it sorts correctly
+    }
+
     const test = {
       id: generateId(),
-      date: new Date().toISOString(),
+      date: testDate.toISOString(),
       name: DOM.testNameInput.value.trim() || 'Mock Test',
       totalMarks: parseInt(DOM.testTotalInput.value, 10) || 300,
       obtainedMarks: parseInt(DOM.testObtainedInput.value, 10) || 0,
@@ -1493,6 +1520,10 @@ if (DOM.addTestForm) {
     showToast('Test logged successfully', 'success');
     DOM.addTestForm.reset();
     DOM.testTotalInput.value = 300;
+    
+    // Reset the date picker to today after submission
+    DOM.testDateInput.value = new Date().toISOString().split('T')[0];
+    
     renderTestDashboard();
   });
 }
