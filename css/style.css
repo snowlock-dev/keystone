@@ -1470,6 +1470,92 @@ button:disabled {
   border: 2px solid var(--fg); 
 }
 
+
+.clock-section {
+  margin: 3rem auto 2.5rem;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s ease;
+  z-index: 2;
+  width: fit-content;
+}
+
+.clock-section:hover .clock-display {
+  color: var(--accent);
+}
+
+.clock-display {
+  font-size: 5rem;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 8px;
+  letter-spacing: -2px;
+  line-height: 1;
+  user-select: none;
+  transition: color 0.3s ease, font-size 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.clock-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.clock-section:hover .clock-hint {
+  opacity: 0.8;
+}
+
+body.zen-mode {
+  overflow: hidden;
+}
+
+body.zen-mode .sidebar,
+body.zen-mode .app-header,
+body.zen-mode .taskflow-tabs-wrapper,
+body.zen-mode #tasksetContainer .tracker-panel {
+  display: none !important;
+}
+
+body.zen-mode #tasksetClockSection {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #050505;
+  z-index: 2000;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
+body.zen-mode #tasksetClockDisplay {
+  font-size: clamp(5rem, 15vw, 12rem);
+  color: var(--fg) !important;
+  letter-spacing: -4px;
+}
+
+body.zen-mode .clock-hint {
+  display: block !important;
+  opacity: 0.5 !important;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
+
 @media (max-width: 1024px) {
   .sidebar {
     width: 250px;

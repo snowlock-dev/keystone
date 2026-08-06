@@ -94,66 +94,132 @@
             <p class="app-subtitle">Capture what matters. Get it done.</p>
           </header>
 
-          <div class="tracker-panel nav-group-panel">
-            <nav class="day-navigator" aria-label="Day navigation">
-              <button class="nav-arrow" id="prevDay" aria-label="Previous day">
-                <i class="ph ph-caret-left"></i>
-              </button>
-              <div class="day-info">
-                <span class="day-name" id="dayName"></span>
-                <span class="day-date" id="dayDate"></span>
-              </div>
-              <button class="nav-arrow" id="nextDay" aria-label="Next day">
-                <i class="ph ph-caret-right"></i>
-              </button>
-              <button class="today-chip" id="todayChip" style="display:none" aria-label="Go to today">Today</button>
-            </nav>
-            <p class="keyboard-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> navigate days &nbsp; <kbd>/</kbd> focus input</p>
+          <!-- TAB SWITCHER -->
+          <div class="taskflow-tabs-wrapper" style="margin-bottom: 1.5rem; display: flex; justify-content: center;">
+            <div class="filter-tabs" role="tablist" aria-label="Taskflow views">
+              <button class="filter-tab active" id="tabDailyFlow" role="tab" aria-selected="true" style="font-weight: 600;">Daily Flow</button>
+              <button class="filter-tab" id="tabTaskset" role="tab" aria-selected="false" style="font-weight: 600;">Taskset</button>
+            </div>
           </div>
 
-          <div class="tracker-panel task-group-panel">
-            <div class="input-wrapper" role="form" aria-label="Add a new task">
-              <input
-                type="text"
-                class="todo-input"
-                id="todoInput"
-                placeholder="What needs to be done?"
-                maxlength="200"
-                aria-label="Task description"
-                autocomplete="off"
-              >
-              <button class="add-btn" id="addBtn" aria-label="Add task">
-                <i class="ph ph-plus" style="font-size:0.75rem"></i>
-                Add
-              </button>
+          <!-- DAILY FLOW CONTAINER -->
+          <div id="dailyFlowContainer">
+            <div class="tracker-panel nav-group-panel">
+              <nav class="day-navigator" aria-label="Day navigation">
+                <button class="nav-arrow" id="prevDay" aria-label="Previous day">
+                  <i class="ph ph-caret-left"></i>
+                </button>
+                <div class="day-info">
+                  <span class="day-name" id="dayName"></span>
+                  <span class="day-date" id="dayDate"></span>
+                </div>
+                <button class="nav-arrow" id="nextDay" aria-label="Next day">
+                  <i class="ph ph-caret-right"></i>
+                </button>
+                <button class="today-chip" id="todayChip" style="display:none" aria-label="Go to today">Today</button>
+              </nav>
+              <p class="keyboard-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> navigate days &nbsp; <kbd>/</kbd> focus input</p>
             </div>
 
-            <div class="content-area" id="contentArea">
-              <section class="progress-section" id="progressSection" style="margin-top:1.5rem; display:none;" aria-label="Completion progress">
-                <div class="progress-header">
-                  <span class="progress-label">Progress</span>
-                  <span class="progress-pct" id="progressPct">0%</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" id="progressFill" style="width:0%"></div>
-                </div>
-              </section>
-
-              <div class="stats-bar" id="statsBar" style="display:none;">
-                <p class="stats-text"><span id="activeCount">0</span> tasks remaining</p>
-                <div class="filter-tabs" role="tablist" aria-label="Filter tasks">
-                  <button class="filter-tab active" role="tab" aria-selected="true" data-filter="all">All</button>
-                  <button class="filter-tab" role="tab" aria-selected="false" data-filter="active">Active</button>
-                  <button class="filter-tab" role="tab" aria-selected="false" data-filter="completed">Done</button>
-                </div>
+            <div class="tracker-panel task-group-panel">
+              <div class="input-wrapper" role="form" aria-label="Add a new task">
+                <input
+                  type="text"
+                  class="todo-input"
+                  id="todoInput"
+                  placeholder="What needs to be done?"
+                  maxlength="200"
+                  aria-label="Task description"
+                  autocomplete="off"
+                >
+                <button class="add-btn" id="addBtn" aria-label="Add task">
+                  <i class="ph ph-plus" style="font-size:0.75rem"></i>
+                  Add
+                </button>
               </div>
 
-              <section class="todo-list" id="todoList" aria-label="Task list"></section>
+              <div class="content-area" id="contentArea">
+                <section class="progress-section" id="progressSection" style="margin-top:1.5rem; display:none;" aria-label="Completion progress">
+                  <div class="progress-header">
+                    <span class="progress-label">Progress</span>
+                    <span class="progress-pct" id="progressPct">0%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                  </div>
+                </section>
 
-              <button class="clear-completed-btn" id="clearCompletedBtn" style="display:none;" aria-label="Clear completed tasks">
-                <i class="ph ph-trash" style="font-size:0.75rem"></i>
-                Clear completed
-              </button>
+                <div class="stats-bar" id="statsBar" style="display:none;">
+                  <p class="stats-text"><span id="activeCount">0</span> tasks remaining</p>
+                  <div class="filter-tabs" role="tablist" aria-label="Filter tasks">
+                    <button class="filter-tab active" role="tab" aria-selected="true" data-filter="all">All</button>
+                    <button class="filter-tab" role="tab" aria-selected="false" data-filter="active">Active</button>
+                    <button class="filter-tab" role="tab" aria-selected="false" data-filter="completed">Done</button>
+                  </div>
+                </div>
+
+                <section class="todo-list" id="todoList" aria-label="Task list"></section>
+
+                <button class="clear-completed-btn" id="clearCompletedBtn" style="display:none;" aria-label="Clear completed tasks">
+                  <i class="ph ph-trash" style="font-size:0.75rem"></i>
+                  Clear completed
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TASKSET CONTAINER -->
+          <div id="tasksetContainer" style="display: none;">
+            <!-- The Clock Section -->
+            <section class="clock-section" id="tasksetClockSection">
+              <div class="clock-display" id="tasksetClockDisplay">00:00:00</div>
+              <div class="clock-hint">[ Click to enter Zen Mode ]</div>
+            </section>
+
+            <div class="tracker-panel task-group-panel">
+              <div class="input-wrapper" role="form" aria-label="Add a new global task">
+                <input
+                  type="text"
+                  class="todo-input"
+                  id="globalTodoInput"
+                  placeholder="What needs to be done?"
+                  maxlength="200"
+                  aria-label="Task description"
+                  autocomplete="off"
+                >
+                <button class="add-btn" id="globalAddBtn" aria-label="Add global task">
+                  <i class="ph ph-plus" style="font-size:0.75rem"></i>
+                  Add
+                </button>
+              </div>
+
+              <div class="content-area" id="globalContentArea">
+                <section class="progress-section" id="globalProgressSection" style="margin-top:1.5rem; display:none;" aria-label="Completion progress">
+                  <div class="progress-header">
+                    <span class="progress-label">Progress</span>
+                    <span class="progress-pct" id="globalProgressPct">0%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" id="globalProgressFill" style="width:0%"></div>
+                  </div>
+                </section>
+
+                <div class="stats-bar" id="globalStatsBar" style="display:none;">
+                  <p class="stats-text"><span id="globalActiveCount">0</span> tasks remaining</p>
+                  <div class="filter-tabs" role="tablist" aria-label="Filter global tasks">
+                    <button class="filter-tab active" role="tab" aria-selected="true" data-global-filter="all">All</button>
+                    <button class="filter-tab" role="tab" aria-selected="false" data-global-filter="active">Active</button>
+                    <button class="filter-tab" role="tab" aria-selected="false" data-global-filter="completed">Done</button>
+                  </div>
+                </div>
+
+                <section class="todo-list" id="globalTodoList" aria-label="Global task list"></section>
+
+                <button class="clear-completed-btn" id="globalClearCompletedBtn" style="display:none;" aria-label="Clear completed tasks">
+                  <i class="ph ph-trash" style="font-size:0.75rem"></i>
+                  Clear completed
+                </button>
+              </div>
             </div>
           </div>
         </div>

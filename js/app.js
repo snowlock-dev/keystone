@@ -107,7 +107,8 @@ const Storage = {
         goals: { ...DEFAULT_GOALS },
         days: {},
         activeSession: null
-      }
+      },
+      globalTodos: []
     };
   },
 
@@ -295,6 +296,54 @@ const Storage = {
       }
     }
 
+    // Global Todos (Taskset)
+    normalized.globalTodos = [];
+    if (data && Array.isArray(data.globalTodos)) {
+      normalized.globalTodos = data.globalTodos
+        .filter(t => t && typeof t === "object")
+        .map(t => ({
+          id:
+            typeof t.id === "string"
+              ? t.id
+              : generateId(),
+
+          text:
+            typeof t.text === "string"
+              ? t.text
+              : "",
+
+          completed:
+            !!t.completed,
+
+          createdAt:
+            typeof t.createdAt === "number"
+              ? t.createdAt
+              : Date.now()
+        }))
+        .filter(t => t.text.trim() !== "");
+    } else {
+      // Compatibility with taskset.html's legacy key "myTasks" if it exists
+      try {
+        const legacyTasks = localStorage.getItem('myTasks');
+        if (legacyTasks) {
+          const parsed = JSON.parse(legacyTasks);
+          if (Array.isArray(parsed)) {
+            normalized.globalTodos = parsed
+              .filter(t => t && typeof t === "object")
+              .map(t => ({
+                id: generateId(),
+                text: typeof t.text === 'string' ? t.text : '',
+                completed: !!t.completed,
+                createdAt: Date.now()
+              }))
+              .filter(t => t.text.trim() !== "");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to migrate legacy taskset myTasks", err);
+      }
+    }
+
     return normalized;
   },
 
@@ -350,6 +399,13 @@ const Storage = {
 
   replaceAll(data) {
     this._cache = this._normalizeData(data);
+    this.write();
+  },
+
+  // -- Global Todos ------
+  getGlobalTodos() { return this.read().globalTodos || []; },
+  setGlobalTodos(todos) {
+    this.read().globalTodos = todos;
     this.write();
   },
 
@@ -472,7 +528,25 @@ const DOM = {
   dayDateEl:          $('dayDate'),
   todayChip:          $('todayChip'),
   contentArea:        $('contentArea'),
-  filterTabs:         document.querySelectorAll('.filter-tab'),
+  filterTabs:         document.querySelectorAll('#dailyFlowContainer .filter-tabs .filter-tab'),
+  globalFilterTabs:   document.querySelectorAll('#tasksetContainer .filter-tabs .filter-tab'),
+
+  tabDailyFlow:       $('tabDailyFlow'),
+  tabTaskset:         $('tabTaskset'),
+  dailyFlowContainer: $('dailyFlowContainer'),
+  tasksetContainer:   $('tasksetContainer'),
+  tasksetClockSection: $('tasksetClockSection'),
+  tasksetClockDisplay: $('tasksetClockDisplay'),
+
+  globalTodoInput:         $('globalTodoInput'),
+  globalAddBtn:            $('globalAddBtn'),
+  globalTodoList:          $('globalTodoList'),
+  globalStatsBar:          $('globalStatsBar'),
+  globalActiveCount:       $('globalActiveCount'),
+  globalProgressSection:   $('globalProgressSection'),
+  globalProgressFill:      $('globalProgressFill'),
+  globalProgressPct:       $('globalProgressPct'),
+  globalClearCompletedBtn: $('globalClearCompletedBtn'),
 
   subjectSelect:      $('subjectSelect'),
   sessionDesc:        $('sessionDesc'),
@@ -1597,3 +1671,279 @@ DOM.filterTabs.forEach((tab) => {
 });
 
 initTaskflow();
+
+// TASKSET LOGIC
+
+let tsTodos = [];
+let tsCurrentFilter = 'all';
+let tsEditingId = null;
+let isZenMode = false;
+
+// --- Tab Switching ---
+function tsSwitchTab(tabName) {
+  if (tabName === 'daily') {
+    DOM.tabDailyFlow.classList.add('active');
+    DOM.tabDailyFlow.setAttribute('aria-selected', 'true');
+    DOM.tabTaskset.classList.remove('active');
+    DOM.tabTaskset.setAttribute('aria-selected', 'false');
+    DOM.dailyFlowContainer.style.display = 'block';
+    DOM.tasksetContainer.style.display = 'none';
+  } else {
+    DOM.tabTaskset.classList.add('active');
+    DOM.tabTaskset.setAttribute('aria-selected', 'true');
+    DOM.tabDailyFlow.classList.remove('active');
+    DOM.tabDailyFlow.setAttribute('aria-selected', 'false');
+    DOM.tasksetContainer.style.display = 'block';
+    DOM.dailyFlowContainer.style.display = 'none';
+    tsRender(); // Initial render when switching to Taskset
+  }
+}
+
+DOM.tabDailyFlow.addEventListener('click', () => tsSwitchTab('daily'));
+DOM.tabTaskset.addEventListener('click', () => tsSwitchTab('taskset'));
+
+// --- Clock ---
+function tsUpdateClock() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  if (DOM.tasksetClockDisplay) {
+    DOM.tasksetClockDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+  }
+}
+
+setInterval(tsUpdateClock, 1000);
+tsUpdateClock();
+
+// --- Zen Mode ---
+function tsToggleZenMode() {
+  isZenMode = !isZenMode;
+  if (isZenMode) {
+    document.body.classList.add('zen-mode');
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {
+        console.log("Fullscreen request denied");
+      });
+    }
+  } else {
+    document.body.classList.remove('zen-mode');
+    if (document.exitFullscreen && document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  }
+}
+
+if (DOM.tasksetClockSection) {
+  DOM.tasksetClockSection.addEventListener('click', tsToggleZenMode);
+}
+
+// Exit Zen Mode with Escape
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isZenMode) {
+    tsToggleZenMode();
+  }
+});
+
+// Listen for fullscreen change to sync state (if user uses Browser UI to exit)
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && isZenMode) {
+    isZenMode = false;
+    document.body.classList.remove('zen-mode');
+  }
+});
+
+// --- Global Todo Logic ---
+function tsLoadTodos() { tsTodos = Storage.getGlobalTodos(); }
+function tsSaveTodos() { Storage.setGlobalTodos(tsTodos); }
+
+function tsGetFilteredTodos() {
+  switch (tsCurrentFilter) {
+    case 'active': return tsTodos.filter(t => !t.completed);
+    case 'completed': return tsTodos.filter(t => t.completed);
+    default: return tsTodos;
+  }
+}
+
+function tsRender() {
+  const filtered = tsGetFilteredTodos();
+  const activeTodos = tsTodos.filter(t => !t.completed);
+  const completedTodos = tsTodos.filter(t => t.completed);
+  const total = tsTodos.length;
+
+  if (total > 0) {
+    DOM.globalStatsBar.style.display = 'flex';
+    DOM.globalProgressSection.style.display = 'block';
+    DOM.globalActiveCount.textContent = activeTodos.length;
+    const pct = Math.round((completedTodos.length / total) * 100);
+    DOM.globalProgressFill.style.width = pct + '%';
+    DOM.globalProgressPct.textContent = pct + '%';
+  } else {
+    DOM.globalStatsBar.style.display = 'none';
+    DOM.globalProgressSection.style.display = 'none';
+  }
+
+  DOM.globalClearCompletedBtn.style.display = completedTodos.length > 0 ? 'inline-flex' : 'none';
+  DOM.globalTodoList.innerHTML = '';
+
+  if (filtered.length === 0) {
+    let emptyMsg, emptyTitle, emptyIcon;
+    if (tsCurrentFilter === 'active' && total > 0) {
+      emptyTitle = 'No active tasks'; emptyMsg = 'Everything is done. Well played.'; emptyIcon = 'ph ph-smiley';
+    } else if (tsCurrentFilter === 'completed' && total > 0) {
+      emptyTitle = 'Nothing completed yet'; emptyMsg = 'Complete some tasks to see them here.'; emptyIcon = 'ph ph-check-circle';
+    } else {
+      emptyTitle = 'Global list clear'; emptyMsg = 'Capture ideas that don\'t belong to a specific day.'; emptyIcon = 'ph ph-clipboard-text';
+    }
+    DOM.globalTodoList.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="${emptyIcon}"></i></div><p class="empty-title">${escapeHtml(emptyTitle)}</p><p class="empty-desc">${escapeHtml(emptyMsg)}</p></div>`;
+    return;
+  }
+
+  filtered.forEach((todo, index) => {
+    const item = document.createElement('div');
+    item.className = 'todo-item fade-in' + (todo.completed ? ' completed' : '');
+    item.style.animationDelay = Math.min(index * 0.04, 0.4) + 's';
+    item.dataset.id = todo.id;
+
+    if (tsEditingId === todo.id) {
+      item.innerHTML = `
+        <div class="checkbox-wrapper">
+          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
+          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
+        </div>
+        <input type="text" class="edit-input" value="${escapeAttr(todo.text)}" maxlength="200" aria-label="Edit global task">
+        <div class="todo-actions" style="opacity:1">
+          <button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>
+          <button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>
+        </div>`;
+    } else {
+      item.innerHTML = `
+        <div class="checkbox-wrapper">
+          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
+          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
+        </div>
+        <span class="todo-text">${escapeHtml(todo.text)}</span>
+        <div class="todo-actions">
+          <button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>
+          <button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>
+        </div>`;
+    }
+
+    DOM.globalTodoList.appendChild(item);
+
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', () => tsToggleTodo(todo.id));
+
+    if (tsEditingId === todo.id) {
+      const editInput = item.querySelector('.edit-input');
+      const saveBtn = item.querySelector('.save-btn');
+      const cancelBtn = item.querySelector('.cancel-btn');
+
+      requestAnimationFrame(() => {
+        editInput.focus();
+        editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+      });
+
+      const save = () => {
+        const newText = editInput.value.trim();
+        if (newText && newText !== todo.text) {
+          const t = tsTodos.find(x => x.id === todo.id);
+          if (t) t.text = newText;
+          tsSaveTodos();
+          showToast('Global task updated', 'success');
+        }
+        tsEditingId = null;
+        tsRender();
+      };
+
+      editInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { tsEditingId = null; tsRender(); }
+      });
+
+      saveBtn.addEventListener('click', save);
+      cancelBtn.addEventListener('click', () => { tsEditingId = null; tsRender(); });
+    } else {
+      const editBtn = item.querySelector('.edit-btn');
+      if (editBtn) editBtn.addEventListener('click', () => { tsEditingId = todo.id; tsRender(); });
+
+      const deleteBtn = item.querySelector('.action-btn.delete');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          item.classList.add('removing');
+          setTimeout(() => tsDeleteTodo(todo.id), 300);
+        });
+      }
+    }
+  });
+}
+
+function tsAddTodo() {
+  const text = DOM.globalTodoInput.value.trim();
+  if (!text) {
+    DOM.globalTodoInput.focus();
+    return;
+  }
+
+  const todo = {
+    id: generateId(),
+    text: text,
+    completed: false,
+    createdAt: Date.now()
+  };
+
+  tsTodos.unshift(todo);
+  tsSaveTodos();
+  DOM.globalTodoInput.value = '';
+  DOM.globalTodoInput.focus();
+  tsRender();
+  showToast('Global task added', 'success');
+}
+
+function tsToggleTodo(id) {
+  const todo = tsTodos.find(t => t.id === id);
+  if (todo) {
+    todo.completed = !todo.completed;
+    if (todo.completed) {
+      playCompletionSfx();
+    }
+    tsSaveTodos();
+    tsRender();
+  }
+}
+
+function tsDeleteTodo(id) {
+  tsTodos = tsTodos.filter(t => t.id !== id);
+  tsSaveTodos();
+  tsRender();
+  showToast('Global task removed', 'neutral');
+}
+
+function tsClearCompleted() {
+  const count = tsTodos.filter(t => t.completed).length;
+  tsTodos = tsTodos.filter(t => !t.completed);
+  tsSaveTodos();
+  tsRender();
+  showToast(`${count} global task${count !== 1 ? 's' : ''} cleared`, 'neutral');
+}
+
+// --- Initialization ---
+function initTaskset() {
+  tsLoadTodos();
+  
+  if (DOM.globalAddBtn) DOM.globalAddBtn.addEventListener('click', tsAddTodo);
+  if (DOM.globalTodoInput) DOM.globalTodoInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tsAddTodo(); });
+  if (DOM.globalClearCompletedBtn) DOM.globalClearCompletedBtn.addEventListener('click', tsClearCompleted);
+
+  DOM.globalFilterTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      DOM.globalFilterTabs.forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      tsCurrentFilter = tab.dataset.globalFilter;
+      tsRender();
+    });
+  });
+}
+
+initTaskset();
