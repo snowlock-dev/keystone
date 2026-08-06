@@ -14,6 +14,8 @@ It tries to combine all of the features I love from different apps/websites, whi
 - [x] Add a timelog section with charts & graphs
 - [x] Add a daily goal section with streaks
 - [x] Add a good todo section
+- [x] Add a test dashboard
+- [x] Add a error dashboard
 
 
 ## Credits
