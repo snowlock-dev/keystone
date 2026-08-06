@@ -51,6 +51,8 @@
         <a href="#" class="nav-item" data-section="taskflow"><i class="ph ph-check-square-offset"></i> <span>Taskflow</span></a>
         <a href="#" class="nav-item" data-section="tracker"><i class="ph ph-timer"></i> <span>Tracker</span></a>
         <a href="#" class="nav-item" data-section="notes"><i class="ph-fill ph-notebook"></i> <span>Notes</span></a>
+        <a href="#" class="nav-item" data-section="tests"><i class="ph-fill ph-exam"></i><span>Tests</span></a>
+        <a href="#" class="nav-item" data-section="errors"><i class="ph-fill ph-warning-circle"></i><span>Errors</span></a>
       </nav>
 
       <div class="sidebar-footer">
@@ -412,6 +414,111 @@
               </div>
             </div>
             <textarea id="notesInput" class="notes-input" placeholder="Start typing your notes here..." aria-label="Notes content"></textarea>
+          </div>
+        </div>
+
+        <!-- TEST DASHBOARD -->
+        <div class="section-view" data-section="tests">
+          <div class="app-header">
+            <h1>Test Dashboard</h1>
+            <p>Track your mock test performance, trajectory, and accuracy over time.</p>
+          </div>
+
+          <div class="stats-cards" id="testStatsCards"></div>
+
+          <div class="tracker-panel">
+            <div class="panel-title">Performance Trajectory</div>
+            <div class="chart-container">
+              <svg id="testLineChart" class="chart-svg" viewBox="0 0 400 200"></svg>
+            </div>
+          </div>
+
+          <div class="tracker-grid">
+            <div class="tracker-panel">
+              <div class="panel-title">Log New Test</div>
+              <form id="addTestForm" style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Test Name</label>
+                  <input type="text" id="testNameInput" class="form-input" placeholder="e.g., Mock Test #14" required>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Total Marks</label>
+                    <input type="number" id="testTotalInput" class="form-input" value="300" required>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Obtained</label>
+                    <input type="number" id="testObtainedInput" class="form-input" value="0" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Accuracy (%)</label>
+                  <input type="number" id="testAccuracyInput" class="form-input" step="0.1" value="0" required>
+                </div>
+                <button type="submit" class="add-btn" style="justify-content: center;">Log Test</button>
+              </form>
+            </div>
+
+            <div class="tracker-panel">
+              <div class="panel-title">Test History</div>
+              <div class="log-list" id="testHistoryList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ERROR LOG -->
+        <div class="section-view" data-section="errors">
+          <div class="app-header">
+            <h1>Error Log</h1>
+            <p>Your personalized Book of Mistakes. Review this before every exam.</p>
+          </div>
+
+          <div class="tracker-grid">
+            <div class="tracker-panel">
+              <div class="panel-title">Log New Mistake</div>
+              <form id="addErrorForm" style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <select id="errorSubjectSelect" class="form-select">
+                      <option value="physics">Physics</option>
+                      <option value="chem">Chemistry</option>
+                      <option value="maths">Maths</option>
+                      <option value="mock">Mock Tests</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Chapter / Topic</label>
+                    <input type="text" id="errorChapterInput" class="form-input" placeholder="e.g., Rotational Motion">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Error Type</label>
+                  <select id="errorTypeSelect" class="form-select">
+                    <option value="Conceptual Gap">Conceptual Gap</option>
+                    <option value="Silly Mistake">Silly Mistake</option>
+                    <option value="Calculation Error">Calculation Error</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Key Takeaway (What did you learn?)</label>
+                  <input type="text" id="errorTakeawayInput" class="form-input" placeholder="e.g., Remember to check domain of log(x)" required>
+                </div>
+                <button type="submit" class="add-btn" style="justify-content: center;">Log Mistake</button>
+              </form>
+            </div>
+
+            <div class="tracker-panel">
+              <div class="panel-title">Recent Mistakes</div>
+
+              <div class="error-filters">
+                <div class="filter-tabs" id="errorSubjectFilters"></div>
+                <div class="filter-tabs" id="errorTypeFilters"></div>
+              </div>
+
+              <div id="errorLogList"></div>
+            </div>
           </div>
         </div>
 

@@ -28,7 +28,9 @@ const KEYBOARD_SHORTCUTS = {
   '1':'home', 
   '2':'taskflow', 
   '3':'tracker', 
-  '4':'notes'
+  '4':'notes',
+  '5':'tests',
+  '6':'errors'
 };
 
 const DEFAULT_GOALS     = { hours: 4, minutes: 0, questions: 50 };
@@ -175,6 +177,9 @@ function validateData(data) {
     }
   }
 
+  if (!Array.isArray(data.tests)) return false;
+  if (!Array.isArray(data.errors)) return false;
+
   return true;
 }
 
@@ -194,7 +199,9 @@ const Storage = {
         days: {},
         activeSession: null
       },
-      globalTodos: []
+      globalTodos: [],
+      tests: [],
+      errors: []
     };
   },
 
@@ -371,6 +378,36 @@ const Storage = {
       }
     }
 
+    // Normalize Tests
+    normalized.tests = [];
+    if (Array.isArray(data.tests)) {
+      normalized.tests = data.tests
+        .filter(t => t && typeof t === "object")
+        .map(t => ({
+          id: typeof t.id === "string" ? t.id : generateId(),
+          date: typeof t.date === "string" && !isNaN(new Date(t.date).getTime()) ? t.date : new Date().toISOString(),
+          name: typeof t.name === "string" ? t.name : "Untitled Test",
+          totalMarks: Number.isFinite(t.totalMarks) ? t.totalMarks : 300,
+          obtainedMarks: Number.isFinite(t.obtainedMarks) ? t.obtainedMarks : 0,
+          accuracy: Number.isFinite(t.accuracy) ? t.accuracy : 0
+        }));
+    }
+
+    // Normalize Errors
+    normalized.errors = [];
+    if (Array.isArray(data.errors)) {
+      normalized.errors = data.errors
+        .filter(e => e && typeof e === "object")
+        .map(e => ({
+          id: typeof e.id === "string" ? e.id : generateId(),
+          date: typeof e.date === "string" && !isNaN(new Date(e.date).getTime()) ? e.date : new Date().toISOString(),
+          subject: typeof e.subject === "string" && SUBJECTS.some(s => s.key === e.subject) ? e.subject : "physics",
+          chapter: typeof e.chapter === "string" ? e.chapter : "General",
+          errorType: typeof e.errorType === "string" ? e.errorType : "Conceptual Gap",
+          takeaway: typeof e.takeaway === "string" ? e.takeaway : ""
+        }));
+    }
+
     return normalized;
   },
 
@@ -531,6 +568,28 @@ const Storage = {
     }
     this._allSessionsCache = out;
     return out;
+  },
+
+  // -- Tests --
+  getTests() { return deepClone(this.read().tests || []); },
+  addTest(test) { return this.transaction(draft => { draft.tests.push(test); }); },
+  removeTest(id) {
+    return this.transaction(draft => {
+      const before = draft.tests.length;
+      draft.tests = draft.tests.filter(t => t.id !== id);
+      return draft.tests.length !== before;
+    });
+  },
+
+  // -- Errors --
+  getErrors() { return deepClone(this.read().errors || []); },
+  addError(error) { return this.transaction(draft => { draft.errors.push(error); }); },
+  removeError(id) {
+    return this.transaction(draft => {
+      const before = draft.errors.length;
+      draft.errors = draft.errors.filter(e => e.id !== id);
+      return draft.errors.length !== before;
+    });
   }
 };
 
@@ -625,7 +684,27 @@ const DOM = {
   qChem:             $('qChem'),
   qMaths:            $('qMaths'),
   timeGoalText:      $('timeGoalText'),
-  questionsGoalText: $('questionsGoalText')
+  questionsGoalText: $('questionsGoalText'),
+
+  // Tests Dashboard
+  testStatsCards:    $('testStatsCards'),
+  testLineChart:     $('testLineChart'),
+  testHistoryList:   $('testHistoryList'),
+  addTestForm:       $('addTestForm'),
+  testNameInput:     $('testNameInput'),
+  testTotalInput:    $('testTotalInput'),
+  testObtainedInput: $('testObtainedInput'),
+  testAccuracyInput: $('testAccuracyInput'),
+
+  // Error Log
+  addErrorForm:      $('addErrorForm'),
+  errorLogList:      $('errorLogList'),
+  errorSubjectSelect:$('errorSubjectSelect'),
+  errorChapterInput: $('errorChapterInput'),
+  errorTypeSelect:   $('errorTypeSelect'),
+  errorTakeawayInput:$('errorTakeawayInput'),
+  errorSubjectFilters: $('errorSubjectFilters'),
+  errorTypeFilters:    $('errorTypeFilters')
 };
 
 
@@ -1255,7 +1334,7 @@ function renderGoals(allSessions) {
   });
 });
 
-// [IMPROVEMENT] Retrieve sessions once and pass to all render functions — avoids redundant allSessions() calls
+// Retrieve sessions once and pass to all render functions — avoids redundant allSessions() calls
 function renderDashboard() {
   const allSessions = Storage.allSessions(); // Single fetch for entire dashboard
   const dailyTotals = computeDailyTotals(7, allSessions);
@@ -1265,9 +1344,306 @@ function renderDashboard() {
   renderGoals(allSessions);
 }
 
+// TEST DASHBOARD LOGIC
+let errFilterSubject = 'all';
+let errFilterType = 'all';
+
+
+function renderTestDashboard() {
+  const tests = Storage.getTests().slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // 1. Stats Cards
+  if (tests.length === 0) {
+    DOM.testStatsCards.innerHTML = `
+      <div class="stat-card"><div class="stat-icon"><i class="ph-fill ph-flag-checkered"></i></div><div class="stat-label">Last Test</div><div class="stat-value">N/A</div></div>
+      <div class="stat-card"><div class="stat-icon"><i class="ph-fill ph-chart-line-up"></i></div><div class="stat-label">Predicted Score</div><div class="stat-value">N/A</div></div>
+      <div class="stat-card"><div class="stat-icon"><i class="ph-fill ph-target"></i></div><div class="stat-label">Avg Accuracy</div><div class="stat-value">N/A</div></div>
+    `;
+  } else {
+    const last = tests[tests.length - 1];
+    const last3 = tests.slice(-3);
+    const avgScore = last3.reduce((sum, t) => sum + (t.obtainedMarks / t.totalMarks) * 100, 0) / last3.length;
+    const avgAcc = last3.reduce((sum, t) => sum + t.accuracy, 0) / last3.length;
+    DOM.testStatsCards.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph-fill ph-flag-checkered"></i></div>
+        <div class="stat-label">Last Test</div>
+        <div class="stat-value">${last.obtainedMarks} / ${last.totalMarks}</div>
+        <div class="stat-sub">${escapeHtml(last.name)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph-fill ph-chart-line-up"></i></div>
+        <div class="stat-label">Predicted Score</div>
+        <div class="stat-value">${avgScore.toFixed(1)}%</div>
+        <div class="stat-sub">Avg of last 3 tests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ph-fill ph-target"></i></div>
+        <div class="stat-label">Avg Accuracy</div>
+        <div class="stat-value">${avgAcc.toFixed(1)}%</div>
+        <div class="stat-sub">Last 3 tests</div>
+      </div>
+    `;
+  }
+
+  // 2. Line Chart
+  renderTestLineChart(tests);
+
+  // 3. History List
+  DOM.testHistoryList.innerHTML = '';
+  if (tests.length === 0) {
+    DOM.testHistoryList.innerHTML = '<div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">No tests logged yet.</div>';
+    return;
+  }
+  [...tests].reverse().forEach(t => {
+    const item = document.createElement('div');
+    item.className = 'log-item';
+    item.innerHTML = `
+      <div class="log-item-info">
+        <div class="log-item-subject">${escapeHtml(t.name)}</div>
+        <div class="log-item-desc">${new Date(t.date).toLocaleDateString()}</div>
+      </div>
+      <div class="log-item-duration" style="color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</div>
+      <div class="log-item-duration" style="color: var(--accent)">${t.accuracy}% Acc</div>
+      <button class="log-item-delete" data-id="${t.id}"><i class="ph ph-x"></i></button>
+    `;
+    DOM.testHistoryList.appendChild(item);
+  });
+}
+
+function renderTestLineChart(tests) {
+  const W = 400, H = 200, PAD = 40;
+  const maxMarks = Math.max(...tests.map(t => t.totalMarks), 100);
+  const parts = [];
+
+  parts.push(`<line x1="${PAD}" y1="${PAD}" x2="${W-PAD}" y2="${PAD}" class="chart-grid-line"/>`);
+  parts.push(`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" class="chart-grid-line"/>`);
+  parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${maxMarks}</text>`);
+  parts.push(`<text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" class="chart-axis-label">0</text>`);
+
+  if (tests.length === 0) {
+    DOM.testLineChart.innerHTML = parts.join('') + `<text x="${W/2}" y="${H/2}" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">No test data to plot</text>`;
+    return;
+  }
+
+  if (tests.length === 1) {
+    const x = W / 2;
+    const y = H - PAD - (tests[0].obtainedMarks / maxMarks) * (H - PAD * 2);
+    parts.push(`<circle cx="${x}" cy="${y}" r="4" fill="var(--accent)"/>`);
+    DOM.testLineChart.innerHTML = parts.join('');
+    return;
+  }
+
+  const stepX = (W - PAD * 2) / (tests.length - 1);
+  const points = tests.map((t, i) => {
+    const x = PAD + i * stepX;
+    const y = H - PAD - (t.obtainedMarks / maxMarks) * (H - PAD * 2);
+    return { x, y, val: t.obtainedMarks };
+  });
+
+  let pathD = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+
+  parts.push(`<path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
+  const areaD = `${pathD} L ${points[points.length-1].x} ${H-PAD} L ${points[0].x} ${H-PAD} Z`;
+  parts.push(`<path d="${areaD}" fill="var(--accent)" opacity="0.1"/>`);
+
+  points.forEach(p => {
+    parts.push(`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"/>`);
+    if (tests.length <= 8) {
+      parts.push(`<text x="${p.x}" y="${p.y - 10}" text-anchor="middle" class="chart-axis-label" style="fill: var(--fg);">${p.val}</text>`);
+    }
+  });
+
+  DOM.testLineChart.innerHTML = parts.join('');
+}
+
+if (DOM.addTestForm) {
+  DOM.addTestForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const test = {
+      id: generateId(),
+      date: new Date().toISOString(),
+      name: DOM.testNameInput.value.trim() || 'Mock Test',
+      totalMarks: parseInt(DOM.testTotalInput.value, 10) || 300,
+      obtainedMarks: parseInt(DOM.testObtainedInput.value, 10) || 0,
+      accuracy: parseFloat(DOM.testAccuracyInput.value) || 0
+    };
+    Storage.addTest(test);
+    showToast('Test logged successfully', 'success');
+    DOM.addTestForm.reset();
+    DOM.testTotalInput.value = 300;
+    renderTestDashboard();
+  });
+}
+
+if (DOM.testHistoryList) {
+  DOM.testHistoryList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.log-item-delete');
+    if (!btn) return;
+    Storage.removeTest(btn.dataset.id);
+    showToast('Test removed', 'neutral');
+    renderTestDashboard();
+  });
+}
+
+
+// ERROR LOG LOGIC
+
+function getErrorTypeColor(type) {
+  switch (type) {
+    case 'Conceptual Gap':   return 'rgb(244, 63, 94)'; // Physics Red
+    case 'Silly Mistake':    return 'rgb(59, 130, 246)'; // Chem Blue
+    case 'Calculation Error':return 'rgb(139, 92, 246)'; // Maths Purple
+    case 'Others':           return 'rgb(107, 107, 107)'; // Muted Gray
+    default: return 'var(--muted)';
+  }
+}
+
+function initErrorFilters() {
+  if (!DOM.errorSubjectFilters || !DOM.errorTypeFilters) return;
+
+  const subjectFilters = [
+    { key: 'all', name: 'All Subjects' },
+    ...SUBJECTS.map(s => ({ key: s.key, name: s.name }))
+  ];
+  // Removed old tags, added Others
+  const typeFilters = [
+    { key: 'all', name: 'All Types' },
+    { key: 'Conceptual Gap', name: 'Conceptual' },
+    { key: 'Silly Mistake', name: 'Silly' },
+    { key: 'Calculation Error', name: 'Calculation' },
+    { key: 'Others', name: 'Others' }
+  ];
+
+  DOM.errorSubjectFilters.innerHTML = subjectFilters.map(f => 
+    `<button class="filter-tab ${f.key === 'all' ? 'active' : ''}" data-filter="${f.key}">${f.name}</button>`
+  ).join('');
+  
+  DOM.errorTypeFilters.innerHTML = typeFilters.map(f => 
+    `<button class="filter-tab ${f.key === 'all' ? 'active' : ''}" data-filter="${f.key}">${f.name}</button>`
+  ).join('');
+
+  DOM.errorSubjectFilters.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      DOM.errorSubjectFilters.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      errFilterSubject = btn.dataset.filter;
+      renderErrorLog();
+    });
+  });
+
+  DOM.errorTypeFilters.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      DOM.errorTypeFilters.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      errFilterType = btn.dataset.filter;
+      renderErrorLog();
+    });
+  });
+}
+
+function renderErrorLog() {
+  if (!DOM.errorLogList) return;
+  
+  let errors = Storage.getErrors().slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // Apply combinations of filters
+  if (errFilterSubject !== 'all') errors = errors.filter(e => e.subject === errFilterSubject);
+  if (errFilterType !== 'all') errors = errors.filter(e => e.errorType === errFilterType);
+
+  DOM.errorLogList.innerHTML = '';
+  
+  if (errors.length === 0) {
+    DOM.errorLogList.innerHTML = '<div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem;grid-column: 1 / -1;">No errors match your filters.</div>';
+    return;
+  }
+
+  errors.forEach(e => {
+    const subj = subjectByKey(e.subject);
+    const typeColor = getErrorTypeColor(e.errorType);
+    
+    const card = document.createElement('div');
+    card.className = 'error-card';
+    // Add colored top border based on error type
+    card.style.borderTop = `4px solid ${typeColor}`;
+    
+    card.innerHTML = `
+      <div class="error-card-header">
+        <div class="log-item-icon" style="background:${subj.color}22;color:${subj.color}">
+          <i class="ph-fill ${subj.icon}"></i>
+        </div>
+        <div class="error-card-info">
+          <div class="log-item-subject">${escapeHtml(e.chapter)}</div>
+          <div class="log-item-desc">${subj.name} • ${new Date(e.date).toLocaleDateString()}</div>
+        </div>
+        <button class="log-item-delete" data-id="${e.id}" aria-label="Delete error">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      <div class="error-card-body">
+        <span class="error-type-badge" style="background:${typeColor}22;color:${typeColor}">
+          ${escapeHtml(e.errorType)}
+        </span>
+        <p class="error-takeaway">${escapeHtml(e.takeaway)}</p>
+      </div>
+    `;
+    DOM.errorLogList.appendChild(card);
+  });
+}
+
+if (DOM.addErrorForm) {
+  DOM.addErrorForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = {
+      id: generateId(),
+      date: new Date().toISOString(),
+      subject: DOM.errorSubjectSelect.value,
+      chapter: DOM.errorChapterInput.value.trim() || 'General',
+      errorType: DOM.errorTypeSelect.value,
+      takeaway: DOM.errorTakeawayInput.value.trim()
+    };
+    if (!err.takeaway) { showToast('Please enter a takeaway', 'error'); return; }
+    Storage.addError(err);
+    showToast('Error logged', 'success');
+    DOM.addErrorForm.reset();
+    renderErrorLog();
+    // Find this block in app.js inside the DOM.addErrorForm event listener
+  if (!err.takeaway) { 
+    showToast('Please enter a takeaway', 'error'); 
+    return; 
+  }
+  });
+}
+
+if (DOM.errorLogList) {
+  DOM.errorLogList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.log-item-delete');
+    if (!btn) return;
+    Storage.removeError(btn.dataset.id);
+    showToast('Error removed', 'neutral');
+    renderErrorLog();
+  });
+}
+
+// Initialize filters on load
+initErrorFilters();
+
 function renderAll() {
   renderSessionLog();
   renderDashboard();
+  renderTestDashboard();
+  renderErrorLog();
 }
 
 

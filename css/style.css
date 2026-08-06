@@ -1307,7 +1307,7 @@ button:disabled {
 
 .chart-svg { width: 100%; height: auto;}
 
-#barChart {
+#barChart, #testLineChart {
   min-width: 600px; 
 }
 
@@ -1471,6 +1471,10 @@ button:disabled {
 }
 
 
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { min-width: 0; }
+
+
 .clock-section {
   margin: 3rem auto 2.5rem;
   text-align: center;
@@ -1543,6 +1547,89 @@ body.zen-mode #tasksetClockDisplay {
 body.zen-mode .clock-hint {
   display: block !important;
   opacity: 0.5 !important;
+}
+
+/* Error Log Cards & Filters */
+.error-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.error-filters .filter-tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.error-filters .filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+.error-filters .filter-tab {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#errorLogList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.error-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.error-card:hover {
+  border-color: #3A3A3A;
+  transform: translateY(-2px);
+}
+
+.error-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.error-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.error-card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.error-type-badge {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.error-takeaway {
+  font-size: 0.9rem;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--surface);
 }
 
 @keyframes slideUp {
@@ -1799,7 +1886,7 @@ body.zen-mode .clock-hint {
     height: auto;
   }
 
-  #barChart {
+  #barChart, #testLineChart {
     min-width: 520px;
     width: 100%;
     height: auto;
@@ -1860,6 +1947,10 @@ body.zen-mode .clock-hint {
   .modal-btn {
     width: 100%;
   }
+
+  .form-row {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1917,5 +2008,9 @@ body.zen-mode .clock-hint {
   .notes-clear-btn {
     min-width: 44px;
     min-height: 44px;
+  }
+  
+  #errorLogList {
+    grid-template-columns: 1fr;
   }
 }
