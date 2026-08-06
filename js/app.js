@@ -42,6 +42,14 @@ function generateId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
 }
 
+// [IMPROVEMENT] Deep clone helper for transactional updates — never mutate cached state directly
+function deepClone(obj) {
+  if (typeof structuredClone === 'function') {
+    try { return structuredClone(obj); } catch (e) { /* fall through */ }
+  }
+  return JSON.parse(JSON.stringify(obj));
+}
+
 function dayKey(date) {
   const d = date instanceof Date ? date : new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -66,38 +74,116 @@ function formatDurationShort(sec) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// [IMPROVEMENT] Enhanced debounce with flush() and isPending() for safe cleanup on unload
 function debounce(fn, ms) {
-    let timer;
-    function wrapped(...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), ms);
+  let timer;
+  let lastArgs;
+  let pending = false;
+  function wrapped(...args) {
+    lastArgs = args;
+    pending = true;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      pending = false;
+      fn(...args);
+    }, ms);
+  }
+  wrapped.cancel = () => {
+    clearTimeout(timer);
+    timer = null;
+    pending = false;
+    lastArgs = null;
+  };
+  // [IMPROVEMENT] Immediately invoke pending callback — used in beforeunload to flush saves
+  wrapped.flush = () => {
+    if (pending) {
+      clearTimeout(timer);
+      timer = null;
+      pending = false;
+      fn(...lastArgs);
+      lastArgs = null;
+      return true;
     }
-    wrapped.cancel = () => clearTimeout(timer);
-    return wrapped;
+    return false;
+  };
+  // [IMPROVEMENT] Check if a debounced call is pending — used to avoid overwriting local edits during cross-tab sync
+  wrapped.isPending = () => pending;
+  return wrapped;
 }
 
 function subjectByKey(key) {
   return SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
 }
 
+// [IMPROVEMENT] Validate a single session object — returns normalized session or null if fundamentally invalid
+function validateSession(s) {
+  if (!s || typeof s !== "object") return null;
+
+  // ID: must be a non-empty string; generate one if missing (normalize)
+  let id = s.id;
+  if (typeof id !== "string" || id.trim() === "") {
+    id = generateId();
+  }
+
+  // Subject: must exist in SUBJECTS list; default to 'physics' if invalid (normalize)
+  const subjectKey =
+    typeof s.subject === "string" && SUBJECTS.some(sub => sub.key === s.subject)
+      ? s.subject
+      : "physics";
+
+  // Dates: must be valid ISO strings — discard session if they cannot be parsed
+  const startStr = typeof s.start === "string" ? s.start : null;
+  const endStr   = typeof s.end   === "string" ? s.end   : null;
+  if (!startStr || isNaN(new Date(startStr).getTime())) return null;
+  if (!endStr   || isNaN(new Date(endStr).getTime()))   return null;
+
+  // Duration: must be a finite, non-negative number — discard if invalid
+  const duration = typeof s.duration === "number" ? s.duration : null;
+  if (duration === null || !Number.isFinite(duration) || duration < 0) return null;
+
+  return {
+    id,
+    subject: subjectKey,
+    description: typeof s.description === "string" ? s.description : "",
+    start: startStr,
+    end: endStr,
+    duration
+  };
+}
+
+// [IMPROVEMENT] Enhanced structural validation — now validates sessions and null-checks questions
 function validateData(data) {
-    if (!data) return false;
-    if (!data.tracker) return false;
-    if (!data.tracker.days) return false;
+  if (!data) return false;
+  if (!data.tracker) return false;
+  if (!data.tracker.days || typeof data.tracker.days !== "object") return false;
 
-    for (const day of Object.values(data.tracker.days)) {
-        if (!Array.isArray(day.todos)) return false;
-        if (!Array.isArray(day.sessions)) return false;
-        if (typeof day.questions !== "object") return false;
+  // Active session must be null or an object
+  if (data.tracker.activeSession !== null && typeof data.tracker.activeSession !== "object") {
+    return false;
+  }
+
+  for (const day of Object.values(data.tracker.days)) {
+    if (!day || typeof day !== "object") return false;
+    if (!Array.isArray(day.todos)) return false;
+    if (!Array.isArray(day.sessions)) return false;
+    if (typeof day.questions !== "object" || day.questions === null) return false;
+
+    // [IMPROVEMENT] Validate every session before saving
+    for (const s of day.sessions) {
+      if (!validateSession(s)) return false;
     }
+  }
 
-    return true;
+  return true;
 }
 
 // --- STORAGE LAYER --- //
 
 const Storage = {
   _cache: null,
+  // [IMPROVEMENT] Cached flat list of all sessions — invalidated on every write
+  _allSessionsCache: null,
 
   _defaultData() {
     return {
@@ -110,6 +196,47 @@ const Storage = {
       },
       globalTodos: []
     };
+  },
+
+  // [IMPROVEMENT] Transactional update — clone → modify → validate → atomic swap.
+  // If anything fails the original _cache is left untouched.
+  transaction(fn) {
+    const current = this.read();
+    const draft = deepClone(current);
+
+    try {
+      const result = fn(draft);
+
+      // Validate the entire draft before committing
+      if (!validateData(draft)) {
+        console.error("Keystone: transaction validation failed — keeping original state");
+        return false;
+      }
+
+      // Atomically replace cache only after validation passes
+      this._cache = draft;
+
+      // Persist to localStorage
+      const saved = this.write();
+      if (!saved) {
+        // Restore original on save failure
+        this._cache = current;
+        return false;
+      }
+
+      // Invalidate derived caches after successful commit
+      this._invalidateSessionsCache();
+      return result !== undefined ? result : true;
+    } catch (err) {
+      console.error("Keystone: transaction failed — keeping original state", err);
+      this._cache = current;
+      return false;
+    }
+  },
+
+  // [IMPROVEMENT] Invalidate the sessions list cache — called after every successful write
+  _invalidateSessionsCache() {
+    this._allSessionsCache = null;
   },
 
   _normalizeData(data) {
@@ -136,65 +263,33 @@ const Storage = {
     // ------------------------
     if (data.tracker && typeof data.tracker === "object") {
 
-      // Goals
+      // Goals — [IMPROVEMENT] use Number.isFinite for proper numeric validation
       normalized.tracker.goals = {
-        hours:
-          typeof data.tracker.goals?.hours === "number"
-            ? data.tracker.goals.hours
-            : DEFAULT_GOALS.hours,
-
-        minutes:
-          typeof data.tracker.goals?.minutes === "number"
-            ? data.tracker.goals.minutes
-            : DEFAULT_GOALS.minutes,
-
-        questions:
-          typeof data.tracker.goals?.questions === "number"
-            ? data.tracker.goals.questions
-            : DEFAULT_GOALS.questions
+        hours:     Number.isFinite(data.tracker.goals?.hours)     ? data.tracker.goals.hours     : DEFAULT_GOALS.hours,
+        minutes:   Number.isFinite(data.tracker.goals?.minutes)   ? data.tracker.goals.minutes   : DEFAULT_GOALS.minutes,
+        questions: Number.isFinite(data.tracker.goals?.questions) ? data.tracker.goals.questions : DEFAULT_GOALS.questions
       };
 
-      // Active timer session
-      if (
-        data.tracker.activeSession &&
-        typeof data.tracker.activeSession === "object"
-      ) {
+      // Active timer session — [IMPROVEMENT] use Number.isSafeInteger for timestamps
+      if (data.tracker.activeSession && typeof data.tracker.activeSession === "object") {
+        const as = data.tracker.activeSession;
         normalized.tracker.activeSession = {
           subject:
-            typeof data.tracker.activeSession.subject === "string"
-              ? data.tracker.activeSession.subject
+            typeof as.subject === "string" && SUBJECTS.some(s => s.key === as.subject)
+              ? as.subject
               : "physics",
-
-          description:
-            typeof data.tracker.activeSession.description === "string"
-              ? data.tracker.activeSession.description
-              : "",
-
-          startedAt:
-            typeof data.tracker.activeSession.startedAt === "number"
-              ? data.tracker.activeSession.startedAt
-              : null,
-
-          pausedAccumulated:
-            typeof data.tracker.activeSession.pausedAccumulated === "number"
-              ? data.tracker.activeSession.pausedAccumulated
-              : 0,
-
-          isPaused:
-            !!data.tracker.activeSession.isPaused
+          description: typeof as.description === "string" ? as.description : "",
+          startedAt: Number.isSafeInteger(as.startedAt) ? as.startedAt : null,
+          pausedAccumulated: Number.isFinite(as.pausedAccumulated) ? as.pausedAccumulated : 0,
+          isPaused: !!as.isPaused
         };
       }
 
       // Days
-      if (
-        data.tracker.days &&
-        typeof data.tracker.days === "object"
-      ) {
-
+      if (data.tracker.days && typeof data.tracker.days === "object") {
         normalized.tracker.days = {};
 
         for (const [dayKey, day] of Object.entries(data.tracker.days)) {
-
           normalized.tracker.days[dayKey] = {
             sessions: [],
             questions: { ...DEFAULT_QUESTIONS },
@@ -202,93 +297,36 @@ const Storage = {
           };
 
           // ------------------------
-          // Sessions
+          // Sessions — [IMPROVEMENT] validate every session via validateSession()
           // ------------------------
           if (Array.isArray(day.sessions)) {
             normalized.tracker.days[dayKey].sessions = day.sessions
-              .filter(s => s && typeof s === "object")
-              .map(s => ({
-                id:
-                  typeof s.id === "string"
-                    ? s.id
-                    : generateId(),
-
-                subject:
-                  typeof s.subject === "string"
-                    ? s.subject
-                    : "physics",
-
-                description:
-                  typeof s.description === "string"
-                    ? s.description
-                    : "",
-
-                start:
-                  typeof s.start === "string"
-                    ? s.start
-                    : new Date().toISOString(),
-
-                end:
-                  typeof s.end === "string"
-                    ? s.end
-                    : new Date().toISOString(),
-
-                duration:
-                  typeof s.duration === "number"
-                    ? s.duration
-                    : 0
-              }));
+              .map(s => validateSession(s))   // Returns normalized session or null
+              .filter(s => s !== null);       // Discard invalid sessions
           }
 
           // ------------------------
-          // Questions
+          // Questions — [IMPROVEMENT] use Number.isFinite
           // ------------------------
-          if (
-            day.questions &&
-            typeof day.questions === "object"
-          ) {
+          if (day.questions && typeof day.questions === "object") {
             normalized.tracker.days[dayKey].questions = {
-              phy:
-                typeof day.questions.phy === "number"
-                  ? day.questions.phy
-                  : 0,
-
-              chem:
-                typeof day.questions.chem === "number"
-                  ? day.questions.chem
-                  : 0,
-
-              maths:
-                typeof day.questions.maths === "number"
-                  ? day.questions.maths
-                  : 0
+              phy:   Number.isFinite(day.questions.phy)   ? day.questions.phy   : 0,
+              chem:  Number.isFinite(day.questions.chem)  ? day.questions.chem  : 0,
+              maths: Number.isFinite(day.questions.maths) ? day.questions.maths : 0
             };
           }
 
           // ------------------------
-          // Todos
+          // Todos — [IMPROVEMENT] use Number.isSafeInteger for createdAt timestamps
           // ------------------------
           if (Array.isArray(day.todos)) {
             normalized.tracker.days[dayKey].todos = day.todos
               .filter(t => t && typeof t === "object")
               .map(t => ({
-                id:
-                  typeof t.id === "string"
-                    ? t.id
-                    : generateId(),
-
-                text:
-                  typeof t.text === "string"
-                    ? t.text
-                    : "",
-
-                completed:
-                  !!t.completed,
-
-                createdAt:
-                  typeof t.createdAt === "number"
-                    ? t.createdAt
-                    : Date.now()
+                id:       typeof t.id === "string" ? t.id : generateId(),
+                text:     typeof t.text === "string" ? t.text : "",
+                completed: !!t.completed,
+                createdAt: Number.isSafeInteger(t.createdAt) ? t.createdAt : Date.now()
               }))
               .filter(t => t.text.trim() !== "");
           }
@@ -296,33 +334,22 @@ const Storage = {
       }
     }
 
-    // Global Todos (Taskset)
+    // ------------------------
+    // Global Todos (Taskset) — [IMPROVEMENT] use Number.isSafeInteger for createdAt
+    // ------------------------
     normalized.globalTodos = [];
     if (data && Array.isArray(data.globalTodos)) {
       normalized.globalTodos = data.globalTodos
         .filter(t => t && typeof t === "object")
         .map(t => ({
-          id:
-            typeof t.id === "string"
-              ? t.id
-              : generateId(),
-
-          text:
-            typeof t.text === "string"
-              ? t.text
-              : "",
-
-          completed:
-            !!t.completed,
-
-          createdAt:
-            typeof t.createdAt === "number"
-              ? t.createdAt
-              : Date.now()
+          id:       typeof t.id === "string" ? t.id : generateId(),
+          text:     typeof t.text === "string" ? t.text : "",
+          completed: !!t.completed,
+          createdAt: Number.isSafeInteger(t.createdAt) ? t.createdAt : Date.now()
         }))
         .filter(t => t.text.trim() !== "");
     } else {
-      // Compatibility with taskset.html's legacy key "myTasks" if it exists
+      // Compatibility with taskset.html's legacy key "myTasks"
       try {
         const legacyTasks = localStorage.getItem('myTasks');
         if (legacyTasks) {
@@ -353,10 +380,9 @@ const Storage = {
     try {
       let raw = localStorage.getItem(STORAGE_KEY);
 
-      // Try recovering from temp.
+      // Try recovering from temp backup
       if (!raw) {
         const tmp = localStorage.getItem(STORAGE_KEY + "_tmp");
-
         if (tmp) {
           console.warn("Recovering storage from temporary backup...");
           localStorage.setItem(STORAGE_KEY, tmp);
@@ -384,11 +410,9 @@ const Storage = {
         return false;
       }
       const json = JSON.stringify(this._cache);
-      // write temp
+      // Write to temp first, then overwrite real, then clean up — crash-safe atomic write
       localStorage.setItem(STORAGE_KEY + "_tmp", json);
-      // overwrite real
       localStorage.setItem(STORAGE_KEY, json);
-      // remove temp
       localStorage.removeItem(STORAGE_KEY + "_tmp");
       return true;
     } catch (err) {
@@ -398,56 +422,65 @@ const Storage = {
   },
 
   replaceAll(data) {
-    this._cache = this._normalizeData(data);
-    this.write();
+    // [IMPROVEMENT] Normalize and validate before replacing cache
+    const normalized = this._normalizeData(data);
+    if (!validateData(normalized)) {
+      console.error("Refusing to replace with invalid data");
+      return false;
+    }
+    this._cache = normalized;
+    this._invalidateSessionsCache();
+    return this.write();
   },
 
-  // -- Global Todos ------
-  getGlobalTodos() { return this.read().globalTodos || []; },
+  // -- Global Todos ------ [IMPROVEMENT] transactional + return copies
+  getGlobalTodos() { return deepClone(this.read().globalTodos || []); },
   setGlobalTodos(todos) {
-    this.read().globalTodos = todos;
-    this.write();
+    return this.transaction(draft => { draft.globalTodos = todos; });
   },
 
-  // -- Notes ------
+  // -- Notes ------ [IMPROVEMENT] transactional
   getNotes()       { return this.read().notes.content; },
-  setNotes(text)   { this.read().notes.content = text; return this.write(); },
-  clearNotes()     { this.read().notes.content = ''; this.write(); },
+  setNotes(text)   { return this.transaction(draft => { draft.notes.content = text; }); },
+  clearNotes()     { return this.transaction(draft => { draft.notes.content = ''; }); },
 
-  // -- Goals ------
-  getGoals()       { return this.read().tracker.goals; },
-  setGoals(goals)  { this.read().tracker.goals = goals; this.write(); },
+  // -- Goals ------ [IMPROVEMENT] transactional + return copy
+  getGoals()       { return { ...this.read().tracker.goals }; },
+  setGoals(goals)  { return this.transaction(draft => { draft.tracker.goals = goals; }); },
 
-  // -- Active Session Persistence ------
-  getActiveSession() { return this.read().tracker.activeSession; },
+  // -- Active Session Persistence ------ [IMPROVEMENT] transactional + return copy
+  getActiveSession() {
+    const s = this.read().tracker.activeSession;
+    return s ? { ...s } : null;
+  },
   setActiveSession(session) {
-    this.read().tracker.activeSession = session;
-    this.write();
+    return this.transaction(draft => { draft.tracker.activeSession = session; });
   },
 
-  // -- Per-day access ------
-  _ensureDay(date) {
+  // [IMPROVEMENT] Ensure a day exists inside a transaction draft — never mutates _cache directly
+  _ensureDayInDraft(draft, date) {
     const key  = dayKey(date);
-    const days = this.read().tracker.days;
-    if (!days[key]) days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS }, todos: [] };
-    
+    if (!draft.tracker.days[key]) {
+      draft.tracker.days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS }, todos: [] };
+    }
     // Safety fallbacks for older save formats
-    if (!days[key].todos) days[key].todos = [];
-    if (!days[key].questions) days[key].questions = { ...DEFAULT_QUESTIONS };
-    if (!days[key].sessions) days[key].sessions = [];
-    
-    return days[key];
+    if (!draft.tracker.days[key].todos)     draft.tracker.days[key].todos = [];
+    if (!draft.tracker.days[key].questions) draft.tracker.days[key].questions = { ...DEFAULT_QUESTIONS };
+    if (!draft.tracker.days[key].sessions)  draft.tracker.days[key].sessions = [];
+    return draft.tracker.days[key];
   },
 
   dayExists(date) {
     return !!this.read().tracker.days[dayKey(date)];
   },
 
-  // -- Todos/Tasks ------
-  getTodos(date) { return this._ensureDay(date).todos || []; },
+  // -- Todos/Tasks ------ [IMPROVEMENT] transactional + return deep copies (no side effects on read)
+  getTodos(date) {
+    const day = this.read().tracker.days[dayKey(date)];
+    return day ? deepClone(day.todos || []) : [];
+  },
   setTodos(date, todos) {
-    this._ensureDay(date).todos = todos;
-    this.write();
+    return this.transaction(draft => { this._ensureDayInDraft(draft, date).todos = todos; });
   },
 
   getQuestions(date) {
@@ -455,38 +488,48 @@ const Storage = {
     return day ? { ...DEFAULT_QUESTIONS, ...day.questions } : { ...DEFAULT_QUESTIONS };
   },
   setQuestions(date, q) {
-    this._ensureDay(date).questions = q;
-    this.write();
+    return this.transaction(draft => { this._ensureDayInDraft(draft, date).questions = q; });
   },
 
+  // [IMPROVEMENT] Return deep clone to prevent external mutation of cached data
   getSessions(date) {
     const day = this.read().tracker.days[dayKey(date)];
-    return day ? day.sessions : [];
+    return day ? deepClone(day.sessions || []) : [];
   },
 
+  // [IMPROVEMENT] Validate session before adding; use transaction
   addSession(session) {
-    this._ensureDay(new Date(session.end)).sessions.push(session);
-    this.write();
+    const validated = validateSession(session);
+    if (!validated) {
+      console.error("Keystone: refusing to add invalid session", session);
+      return false;
+    }
+    return this.transaction(draft => {
+      this._ensureDayInDraft(draft, new Date(validated.end)).sessions.push(validated);
+    });
   },
 
   removeSession(id) {
-    const days = this.read().tracker.days;
-    for (const key of Object.keys(days)) {
-      const before = days[key].sessions.length;
-      days[key].sessions = days[key].sessions.filter(s => s.id !== id);
-      if (days[key].sessions.length !== before) {
-        this.write();
-        return true;
+    return this.transaction(draft => {
+      let removed = false;
+      for (const key of Object.keys(draft.tracker.days)) {
+        const before = draft.tracker.days[key].sessions.length;
+        draft.tracker.days[key].sessions = draft.tracker.days[key].sessions.filter(s => s.id !== id);
+        if (draft.tracker.days[key].sessions.length !== before) removed = true;
       }
-    }
-    return false;
+      return removed;
+    });
   },
 
+  // [IMPROVEMENT] Cache the flat sessions list — invalidated on every write and cross-tab sync
   allSessions() {
+    if (this._allSessionsCache) return this._allSessionsCache;
+
     const out = [];
     for (const day of Object.values(this.read().tracker.days)) {
-      if (day.sessions) out.push(...day.sessions);
+      if (Array.isArray(day.sessions)) out.push(...day.sessions);
     }
+    this._allSessionsCache = out;
     return out;
   }
 };
@@ -653,7 +696,7 @@ function renderCalendar() {
     const dateObj = new Date(calYear, calMonth, d);
     const cell = document.createElement('div');
     cell.className = 'calendar-day';
-    cell.style.cursor = 'pointer'; // [IMPROVEMENT] Make it visually clear the days are clickable
+    cell.style.cursor = 'pointer';
     
     if (isSameDay(dateObj, today)) cell.classList.add('today');
     cell.innerHTML = `
@@ -661,14 +704,12 @@ function renderCalendar() {
       <span class="cal-date">${d}</span>
     `;
     
-    // [NEW] Click handler to jump to Taskflow for the selected day
     cell.addEventListener('click', () => {
       tfSelectedYear = calYear;
       tfSelectedMonth = calMonth;
       tfSelectedDay = d;
-      
-      switchSection('taskflow'); // Switch view to Taskflow
-      tfSwitchDay();             // Apply the date change and load tasks
+      switchSection('taskflow');
+      tfSwitchDay();
     });
 
     DOM.calendarGrid.appendChild(cell);
@@ -764,12 +805,18 @@ const activeTracker = {
   isPaused:          false
 };
 
-function resetActiveTracker() {
+// [IMPROVEMENT] Reset in-memory fields only — does NOT write to storage.
+// Used during cross-tab sync to avoid triggering a write loop.
+function resetActiveTrackerFields() {
   activeTracker.subject           = 'physics';
   activeTracker.description       = '';
   activeTracker.startedAt         = null;
   activeTracker.pausedAccumulated = 0;
   activeTracker.isPaused          = false;
+}
+
+function resetActiveTracker() {
+  resetActiveTrackerFields();
   Storage.setActiveSession(null); // Clear from storage on reset
 }
 
@@ -812,7 +859,7 @@ DOM.startBtn.addEventListener('click', () => {
     activeTracker.startedAt = Date.now();
     activeTracker.isPaused  = false;
   }
-  Storage.setActiveSession({ ...activeTracker }); // [IMPROVEMENT] Persist state
+  Storage.setActiveSession({ ...activeTracker });
   updateTimerUI();
 });
 
@@ -947,33 +994,36 @@ DOM.saveModalBtn.addEventListener('click', () => {
 
 
 // -- DASHBOARD: STATS COMPUTATION -- //
+// [IMPROVEMENT] All functions below accept an optional `allSessions` array to avoid
+// calling Storage.allSessions() multiple times during a single render cycle.
 
-function getTodayTotalSeconds() {
+function getTodayTotalSeconds(allSessions) {
   const todayStart = startOfDay(new Date()).getTime();
-  return Storage.allSessions()
+  return (allSessions || Storage.allSessions())
     .filter(s => new Date(s.end).getTime() >= todayStart)
     .reduce((sum, s) => sum + s.duration, 0);
 }
 
-function computeDailyTotals(numDays) {
+function computeDailyTotals(numDays, allSessions) {
+  const sessions = allSessions || Storage.allSessions();
   const totals = {};
   for (let i = 0; i < numDays; i++) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
     totals[d.getTime()] = 0;
   }
-  for (const s of Storage.allSessions()) {
+  for (const s of sessions) {
     const dayStart = startOfDay(new Date(s.end)).getTime();
     if (totals[dayStart] !== undefined) totals[dayStart] += s.duration;
   }
   return totals;
 }
 
-// [IMPROVEMENT] Removed day limit (365)
-function computeTimeStreak() {
+// [IMPROVEMENT] Accept cached sessions array to avoid redundant allSessions() calls
+function computeTimeStreak(allSessions) {
   let streak = 0;
-  const allSessions = Storage.allSessions();
-  const loggedDays = new Set(allSessions.map(s => startOfDay(new Date(s.end)).getTime()));
+  const sessions = allSessions || Storage.allSessions();
+  const loggedDays = new Set(sessions.map(s => startOfDay(new Date(s.end)).getTime()));
 
   let i = 0;
   while (true) {
@@ -994,7 +1044,6 @@ function computeTimeStreak() {
   return streak;
 }
 
-// [IMPROVEMENT] Removed day limit (365)
 function computeQuestionStreak() {
   const goal = Storage.getGoals().questions;
   if (!goal || goal <= 0) return 0;
@@ -1028,29 +1077,32 @@ function computeQuestionStreak() {
 
 
 // -- DASHBOARD — RENDERING -- //
+// [IMPROVEMENT] Pass cached allSessions to every render function to avoid repeated reads
 
-function renderStats(dailyTotals) {
+function renderStats(dailyTotals, allSessions) {
+  const sessions = allSessions || Storage.allSessions();
   const maxDay = Math.max(0, ...Object.values(dailyTotals));
   DOM.statMaxDay.textContent = formatDurationShort(maxDay);
 
   const thirtyDaysAgo = startOfDay(new Date()).getTime() - 29 * DAY_MS;
-  const recent = Storage.allSessions().filter(s => new Date(s.end).getTime() >= thirtyDaysAgo);
+  const recent = sessions.filter(s => new Date(s.end).getTime() >= thirtyDaysAgo);
   const avgSes = recent.length > 0 ? recent.reduce((a, s) => a + s.duration, 0) / recent.length : 0;
   DOM.statAvgSession.textContent = formatDurationShort(avgSes);
 
   const weekTotal = Object.values(dailyTotals).reduce((a, b) => a + b, 0);
   DOM.statAvgHrsDay.textContent = formatDurationShort(weekTotal / 7);
 
-  DOM.statTimeStreak.textContent = computeTimeStreak() + ' days';
+  DOM.statTimeStreak.textContent = computeTimeStreak(sessions) + ' days';
   DOM.statQuestionStreak.textContent = computeQuestionStreak() + ' days';
 }
 
-function renderPieChart() {
+function renderPieChart(allSessions) {
+  const sessions = allSessions || Storage.allSessions();
   const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
   const pieData = {};
   SUBJECTS.forEach(s => { pieData[s.key] = 0; });
 
-  for (const s of Storage.allSessions()) {
+  for (const s of sessions) {
     if (new Date(s.end).getTime() >= sevenDaysAgo) {
       pieData[s.subject] = (pieData[s.subject] || 0) + s.duration;
     }
@@ -1111,7 +1163,8 @@ function renderPieChart() {
   }
 }
 
-function renderBarChart(dailyTotals) {
+function renderBarChart(dailyTotals, allSessions) {
+  const sessions = allSessions || Storage.allSessions();
   const W = 400, H = 200, PAD = 40;
   const maxVal = Math.max(3600, ...Object.values(dailyTotals));
   const maxH   = H - PAD * 2;
@@ -1124,8 +1177,6 @@ function renderBarChart(dailyTotals) {
   parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${formatDurationShort(maxVal)}</text>`);
   parts.push(`<text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" class="chart-axis-label">0m</text>`);
 
-  const allSessions = Storage.allSessions();
-
   for (let i = 6; i >= 0; i--) {
     const d = startOfDay(new Date());
     d.setDate(d.getDate() - i);
@@ -1136,7 +1187,7 @@ function renderBarChart(dailyTotals) {
     let currentY = H - PAD;
 
     for (const subj of SUBJECTS) {
-      const subjDur = allSessions
+      const subjDur = sessions
         .filter(s => s.subject === subj.key && new Date(s.end).getTime() >= dayStart && new Date(s.end).getTime() <  dayEnd)
         .reduce((sum, s) => sum + s.duration, 0);
 
@@ -1154,11 +1205,11 @@ function renderBarChart(dailyTotals) {
 
 // -- DASHBOARD: GOALS & QUESTIONS -- //
 
-function renderGoalProgress() {
+function renderGoalProgress(allSessions) {
   const goals    = Storage.getGoals();
   const q        = Storage.getQuestions(new Date());
   const goalSecs = goals.hours * 3600 + goals.minutes * 60;
-  const todaySecs= getTodayTotalSeconds();
+  const todaySecs= getTodayTotalSeconds(allSessions);
   const totalQ   = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
 
   DOM.timeGoalText.textContent = `${formatDurationShort(todaySecs)} / ${formatDurationShort(goalSecs)}`;
@@ -1168,7 +1219,7 @@ function renderGoalProgress() {
   DOM.questionsGoalText.classList.toggle('met', goals.questions > 0 && totalQ >= goals.questions);
 }
 
-function renderGoals() {
+function renderGoals(allSessions) {
   const goals = Storage.getGoals();
   const q     = Storage.getQuestions(new Date());
 
@@ -1179,7 +1230,7 @@ function renderGoals() {
   DOM.qChem.value         = q.chem;
   DOM.qMaths.value        = q.maths;
 
-  renderGoalProgress();
+  renderGoalProgress(allSessions);
 }
 
 [DOM.goalHours, DOM.goalMinutes, DOM.questionsGoal].forEach(input => {
@@ -1204,12 +1255,14 @@ function renderGoals() {
   });
 });
 
+// [IMPROVEMENT] Retrieve sessions once and pass to all render functions — avoids redundant allSessions() calls
 function renderDashboard() {
-  const dailyTotals = computeDailyTotals(7);
-  renderStats(dailyTotals);
-  renderPieChart();
-  renderBarChart(dailyTotals);
-  renderGoals();
+  const allSessions = Storage.allSessions(); // Single fetch for entire dashboard
+  const dailyTotals = computeDailyTotals(7, allSessions);
+  renderStats(dailyTotals, allSessions);
+  renderPieChart(allSessions);
+  renderBarChart(dailyTotals, allSessions);
+  renderGoals(allSessions);
 }
 
 function renderAll() {
@@ -1218,9 +1271,7 @@ function renderAll() {
 }
 
 
-// ======================
 // BACKUP & RESTORE
-// ======================
 function exportData() {
   const payload = {
     app:        APP_NAME,
@@ -1242,7 +1293,6 @@ function exportData() {
   showToast('Backup exported to keystone-backup.json', 'success');
 }
 
-// [IMPROVEMENT] Loosened validation for better forward-compatibility
 function isValidBackup(parsed) {
   if (!parsed || typeof parsed !== 'object') return false;
   if (!parsed.data || typeof parsed.data !== 'object') return false;
@@ -1250,7 +1300,6 @@ function isValidBackup(parsed) {
   return true;
 }
 
-// [FIX] Complete rewrite of handleImportFile to fix critical scope/ReferenceError bug
 function handleImportFile(file) {
   if (!file) return;
   
@@ -1285,7 +1334,7 @@ DOM.importBtn.addEventListener('click', () => DOM.importFileInput.click());
 DOM.importFileInput.addEventListener('change', (e) => {
   if (e.target.files && e.target.files.length > 0) {
     handleImportFile(e.target.files[0]);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   }
 });
 
@@ -1317,9 +1366,7 @@ window.addEventListener('keydown', (e) => {
 renderAll();
 
 
-// ============================
 // TASKFLOW FRONTEND LOGIC
-// ============================
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -1672,7 +1719,7 @@ DOM.filterTabs.forEach((tab) => {
 
 initTaskflow();
 
-// TASKSET LOGIC
+// TASKSET LOGIC (GLOBAL TODOS, CLOCK, ZEN)
 
 let tsTodos = [];
 let tsCurrentFilter = 'all';
@@ -1695,7 +1742,7 @@ function tsSwitchTab(tabName) {
     DOM.tabDailyFlow.setAttribute('aria-selected', 'false');
     DOM.tasksetContainer.style.display = 'block';
     DOM.dailyFlowContainer.style.display = 'none';
-    tsRender(); // Initial render when switching to Taskset
+    tsRender();
   }
 }
 
@@ -1738,14 +1785,12 @@ if (DOM.tasksetClockSection) {
   DOM.tasksetClockSection.addEventListener('click', tsToggleZenMode);
 }
 
-// Exit Zen Mode with Escape
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && isZenMode) {
     tsToggleZenMode();
   }
 });
 
-// Listen for fullscreen change to sync state (if user uses Browser UI to exit)
 document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement && isZenMode) {
     isZenMode = false;
@@ -1947,3 +1992,70 @@ function initTaskset() {
 }
 
 initTaskset();
+
+
+
+// [IMPROVEMENT] CROSS-TAB SYNCHRONIZATION
+window.addEventListener('storage', (e) => {
+  // Only react to changes on our primary storage key (ignore _tmp backup operations)
+  if (e.key !== STORAGE_KEY) return;
+
+  // Invalidate all caches to force a fresh read from localStorage
+  Storage._cache = null;
+  Storage._invalidateSessionsCache();
+
+  // Reload latest data — normalizeData handles any invalid or missing fields
+  Storage.read();
+
+  // Restore active session if it was updated in another tab.
+  const saved = Storage.getActiveSession();
+  if (saved && (saved.startedAt || saved.isPaused)) {
+    Object.assign(activeTracker, saved);
+  } else {
+    resetActiveTrackerFields(); // In-memory only — does NOT persist
+  }
+  DOM.subjectSelect.value = activeTracker.subject;
+  DOM.sessionDesc.value = activeTracker.description;
+  updateTimerUI();
+
+  // Update notes from other tab only if the user is not actively editing
+  if (!saveNotesDebounced.isPending()) {
+    DOM.notesInput.value = Storage.getNotes();
+    DOM.notesSaveIndicator.textContent = 'All changes saved';
+    DOM.notesSaveIndicator.classList.remove('saving');
+    updateNotesCount();
+  }
+
+  // Reload todos for both task lists so they reflect cross-tab changes
+  tfLoadTodos();
+  tsLoadTodos();
+
+  // Re-render everything — these are read-only operations and will NOT
+  // trigger further storage writes, preventing any update loop.
+  renderAll();
+  tfRender();
+  tsRender();
+});
+
+
+// [IMPROVEMENT] SAVE BEFORE CLOSING
+function flushBeforeClose() {
+  // Flush any pending debounced note save immediately
+  if (typeof saveNotesDebounced.flush === 'function') {
+    saveNotesDebounced.flush();
+  }
+
+  // Extra safety: directly save notes if content differs from what's stored
+  // (covers edge cases where the debounce timer wasn't running but input changed)
+  if (DOM.notesInput && DOM.notesInput.value !== Storage.getNotes()) {
+    Storage.setNotes(DOM.notesInput.value);
+  }
+
+  // Persist the current active timer session so it survives page reload
+  if (activeTracker.startedAt || activeTracker.pausedAccumulated > 0) {
+    Storage.setActiveSession({ ...activeTracker });
+  }
+}
+
+window.addEventListener('beforeunload', flushBeforeClose);
+window.addEventListener('pagehide', flushBeforeClose);
