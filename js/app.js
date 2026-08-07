@@ -1677,6 +1677,7 @@ function renderErrorLog() {
     
     const card = document.createElement('div');
     card.className = 'error-card';
+    card.dataset.errorId = e.id;
     card.innerHTML = `
       <div class="error-actions-top">
         ${actionsHtml}
