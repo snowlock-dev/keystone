@@ -138,7 +138,7 @@ button:disabled {
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   color: var(--muted);
-  border-top: 1px solid var(--border);
+  border-top: 2px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -243,7 +243,7 @@ button:disabled {
 
 .nav-item:hover {
   color: var(--fg);
-  background: rgba(255, 255, 255, 0.03);
+  transform: translateX(2px);
 }
 
 .nav-item.active {
@@ -436,7 +436,7 @@ button:disabled {
   margin-top: 1.5rem;
   padding: 8px 10px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 14px;
 }
 
@@ -444,7 +444,7 @@ button:disabled {
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   background: var(--card);
   color: var(--muted);
   cursor: pointer;
@@ -476,7 +476,7 @@ button:disabled {
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -508,7 +508,7 @@ button:disabled {
 .today-chip {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--accent);
+  border: 2px solid var(--accent);
   background: rgba(212, 134, 76, 0.08);
   color: var(--accent);
   font-family: inherit;
@@ -674,7 +674,7 @@ button:disabled {
   align-items: center;
   gap: 16px; 
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 14px; 
   padding: 1.25rem 1.5rem; /* Much taller todo items */
   transition: transform 0.2s, border-color 0.25s, opacity 0.3s;
@@ -766,7 +766,7 @@ button:disabled {
 .edit-input {
   flex: 1;
   background: var(--surface);
-  border: 1px solid var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
   font-family: inherit;
@@ -814,13 +814,13 @@ button:disabled {
 
 .action-btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .clear-completed-btn {
   margin-top: 1.5rem;
   padding: 12px 20px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 10px;
   background: transparent;
   color: var(--muted);
@@ -861,7 +861,7 @@ button:disabled {
   height: 72px;
   margin: 0 auto 1.5rem;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 18px;
   display: flex;
   align-items: center;
@@ -914,7 +914,7 @@ button:disabled {
   background: var(--surface);
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
 }
 
 .progress-fill {
@@ -935,12 +935,12 @@ button:disabled {
 .keyboard-hint kbd {
   display: inline-block;
   padding: 2px 6px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 4px;
   background: var(--surface);
   font-family: inherit;
   font-size: 0.7rem;
-  margin: 0 1px;
+  margin: 0 2px;
 }
 
 /* Taskflow Grouping & Visibility */
@@ -1218,7 +1218,7 @@ button:disabled {
 }
 .stat-card { 
   background: var(--card); 
-  border: 1px solid var(--border); 
+  border: 2px solid var(--border); 
   border-radius: 18px; 
   padding: 2rem; 
   transition: border-color 0.25s, box-shadow 0.25s; 
@@ -1232,7 +1232,7 @@ button:disabled {
   height: 48px; 
   border-radius: 12px; 
   background: var(--surface); 
-  border: 1px solid var(--border); 
+  border: 2px solid var(--border); 
   display: flex; 
   align-items: center; 
   justify-content: center; 
@@ -1346,7 +1346,7 @@ button:disabled {
 
 .goal-box {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 16px;
   padding: 2rem;
   text-align: center;
@@ -1577,7 +1577,7 @@ body.zen-mode .clock-hint {
 .session-card, .test-card {
   position: relative;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 20px;
   padding: 2.5rem;
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -1696,7 +1696,7 @@ body.zen-mode .clock-hint {
 .error-card {
   position: relative;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 20px; 
   padding: 3rem; 
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -1842,7 +1842,7 @@ body.zen-mode .clock-hint {
 
 .error-divider {
   width: 100%;
-  height: 1px;
+  height: 2px;
   background: var(--border);
   margin-bottom: 2rem;
 }
@@ -1928,12 +1928,12 @@ body.zen-mode .clock-hint {
   border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 0.95em;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
 }
 
 .error-takeaway.markdown-body pre {
   background: var(--code-bg);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -1973,7 +1973,7 @@ body.zen-mode .clock-hint {
 
 .error-takeaway.markdown-body th,
 .error-takeaway.markdown-body td {
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   padding: 0.5rem 0.75rem;
   text-align: left;
 }
@@ -2048,7 +2048,7 @@ body.zen-mode .clock-hint {
     height: auto;
     position: relative;
     padding: 1rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
   }
 
   .sidebar-header {
