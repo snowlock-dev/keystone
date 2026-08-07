@@ -126,22 +126,34 @@ button:disabled {
   text-decoration: underline dashed var(--accent) 1px;
 }
 
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 .sidebar-footer {
   margin-top: auto;
-  padding: 1rem 1.25rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  border-top: 2px solid var(--border);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 10px;
+}
+
+.sidebar-footer .footer-actions {
+  margin-bottom: 4px;
+}
+
+.sidebar-footer p {
+  margin: 0;
+  line-height: 1.8;
+  font-size: 12px;
+  color: var(--muted, #888);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-footer p i {
+  font-size: 14px;
+}
+
+.sidebar-footer .copyright {
+  opacity: 0.6;
 }
 
 .footer-actions {
@@ -167,11 +179,6 @@ button:disabled {
 .footer-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
-}
-
-.copyright {
-  font-size: 0.75rem;
-  color: var(--muted);
 }
 
 .toast-container {
@@ -325,7 +332,7 @@ button:disabled {
   justify-content: space-between;
 }
 .calendar-month-year { 
-  font-size: 1.6rem; 
+  font-size: 1.5rem; 
   font-weight: 700; 
   text-align: center; 
   flex: 1; 
@@ -355,7 +362,7 @@ button:disabled {
   display: grid; 
   grid-template-columns: repeat(4, 1fr); 
   grid-auto-rows: max-content; 
-  gap: 1.5rem; /* Larger gap */
+  gap: 1.5rem;
   align-content: start; 
   transition: opacity 0.2s ease, transform 0.2s ease;
   opacity: 1;
@@ -373,11 +380,11 @@ button:disabled {
   align-items: flex-start; 
   justify-content: flex-start; 
   border: 2px solid var(--border); 
-  border-radius: 16px; /* More rounded */
+  border-radius: 16px;
   transition: all 0.2s; 
   position: relative; 
   background: var(--surface); 
-  padding: 2rem; /* Deeper padding */
+  padding: 1.3rem;
   margin: 0;
   overflow: hidden;
   aspect-ratio: 1.75; 
@@ -401,7 +408,7 @@ button:disabled {
 .calendar-day.today .cal-dow { color: var(--accent); }
 
 .cal-date { 
-  font-size: 1.75rem; /* Larger date */
+  font-size: 1.5rem;
   font-weight: 700; 
   line-height: 1; 
 }
@@ -1280,13 +1287,6 @@ button:disabled {
 .panel-header-row { margin-bottom: 1.5rem; }
 .stat-row span { color: var(--muted); }
 
-.subject-input-row {
-  margin-bottom: 1rem;
-  color: var(--muted);
-}
-
-.subject-input-row .form-input { width: 80px; text-align: center; }
-
 .chart-container {
   width: 100%;
   position: relative;
@@ -1337,11 +1337,27 @@ button:disabled {
 .bar-chart-bar { transition: opacity 0.2s; }
 .bar-chart-bar:hover { opacity: 0.8; }
 
+/* --- Daily Goals & Questions --- */
+.goals-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem; /* Prevents the streak box from touching the top boxes */
+}
+
+.goals-panel .panel-title {
+  margin-bottom: 0;
+}
+
 .goals-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: 1fr 1.5fr; 
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .goals-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .goal-box {
@@ -1352,24 +1368,106 @@ button:disabled {
   text-align: center;
 }
 
+/* Merged Goals Box */
+.merged-goals-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.merged-goal-section {
+  padding: 0.5rem 0;
+}
+
+.goal-label-small {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.merged-goal-divider {
+  height: 2px;
+  background: var(--border);
+  margin: 1rem 0;
+}
+
 .goal-input-group {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  margin: 1rem 0 1.5rem 0;
+  margin: 0 0 1rem 0;
 }
 
-.goal-input-group .form-input { max-width: 70px; text-align: center; }
+.goal-input-group .form-input { 
+  max-width: 80px; 
+  text-align: center; 
+  padding: 0.75rem 1rem; 
+}
 .goal-unit { font-size: 0.85rem; color: var(--muted); }
 
 .goal-progress-text {
   font-size: 1.1rem;
   color: var(--muted);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
 .goal-progress-text.met { color: var(--success); }
+
+/* Expanded Subject Questions Box */
+.subject-questions-box.expanded {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.25rem; /* Tighter gap for less weird empty space */
+  padding: 2rem;
+}
+
+.subject-questions-box.expanded .form-label {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.subject-input-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 1rem;
+  color: var(--fg);
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.subject-icon {
+  font-size: 1.4rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.subject-input-row .subject-name {
+  flex: 1;
+  text-align: left;
+}
+
+.subject-input-row input.form-input {
+  width: 120px; 
+  max-width: 120px;
+  text-align: center; 
+  font-size: 1.1rem;
+  padding: 0.75rem 1rem; /* Tighter vertical padding */
+}
+
+/* Hide icons on smaller screens to save space */
+@media (max-width: 768px) {
+  .subject-icon {
+    display: none;
+  }
+}
 
 .streak-display {
   text-align: center;
@@ -1378,6 +1476,7 @@ button:disabled {
   border-radius: 16px;
   font-size: 1.1rem;
   color: var(--muted);
+  margin: 0;
 }
 
 .streak-display strong { color: var(--accent); }

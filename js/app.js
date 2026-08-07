@@ -646,6 +646,7 @@ const DOM = {
   exportBtn:       $('exportBtn'),
   importBtn:       $('importBtn'),
   importFileInput: $('importFileInput'),
+  globalSearchBtn: $('globalSearchBtn'),
 
   todoInput:          $('todoInput'),
   addBtn:             $('addBtn'),
@@ -773,6 +774,9 @@ DOM.navItems.forEach(item => {
   });
 });
 
+if (DOM.globalSearchBtn) {
+  DOM.globalSearchBtn.addEventListener('click', () => GlobalSearch.open());
+}
 
 // --- CALENDAR --- //
 let calYear  = new Date().getFullYear();
@@ -2527,12 +2531,7 @@ initTaskset();
       display: none;
     }
     .gs-mode-badge.active { display: inline-block; }
-    .gs-kbd {
-      font-size: 11px; padding: 3px 8px; border-radius: 6px;
-      background: var(--bg, #0d0d0d);
-      border: 1px solid var(--border, rgba(255,255,255,.08));
-      color: var(--muted, #888); font-family: inherit; flex-shrink: 0;
-    }
+
 
     .gs-results { overflow-y: auto; flex: 1; padding: 8px; }
 
@@ -2635,7 +2634,6 @@ const GlobalSearch = {
                  placeholder="Search tasks & errors…  ( !t tasks · !e errors )"
                  autocomplete="off" spellcheck="false" />
           <span class="gs-mode-badge" id="gsModeBadge"></span>
-          <kbd class="gs-kbd">ESC</kbd>
         </div>
         <div class="gs-results" id="gsResults"></div>
         <div class="gs-footer">
@@ -2673,7 +2671,14 @@ const GlobalSearch = {
     this.selectedIndex = 0;
     this.currentResults = [];
     this.renderResults();
-    requestAnimationFrame(() => this.input.focus());
+    
+    // Wait for the next paint cycle, then wait 20ms to ensure CSS transition has started
+    // This forces the browser to acknowledge the input is no longer visibility:hidden
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.input.focus({ preventScroll: true });
+      }, 20);
+    });
   },
 
   close() {
@@ -2959,6 +2964,7 @@ GlobalSearch.init();
 window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
+    e.stopPropagation(); // Prevents browser from stealing focus after executing
     GlobalSearch.toggle();
   }
 });

@@ -316,38 +316,51 @@
           <div class="tracker-panel goals-panel">
             <h2 class="panel-title">Daily Goals & Questions</h2>
             <div class="goals-grid">
-              <!-- Time Goal -->
-              <div class="goal-box">
-                <label class="form-label">Daily Time Goal</label>
-                <div class="goal-input-group">
-                  <input type="number" id="goalHours" class="form-input" min="0" max="24" value="4">
-                  <span class="goal-unit">hr</span>
-                  <input type="number" id="goalMinutes" class="form-input" min="0" max="59" value="0">
-                  <span class="goal-unit">min</span>
+              <!-- Merged Daily Goals Box -->
+              <div class="goal-box merged-goals-box">
+                
+                <!-- Time Goal Section -->
+                <div class="merged-goal-section">
+                  <div class="goal-label-small">Time Goal</div>
+                  <div class="goal-input-group">
+                    <input type="number" id="goalHours" class="form-input" min="0" max="24" value="4">
+                    <span class="goal-unit">hr</span>
+                    <input type="number" id="goalMinutes" class="form-input" min="0" max="59" value="0">
+                    <span class="goal-unit">min</span>
+                  </div>
+                  <div class="goal-progress-text" id="timeGoalText">0m / 4h 0m</div>
                 </div>
-                <div class="goal-progress-text" id="timeGoalText">0m / 4h 0m</div>
+
+                <div class="merged-goal-divider"></div>
+
+                <!-- Questions Goal Section -->
+                <div class="merged-goal-section">
+                  <div class="goal-label-small">Questions Goal</div>
+                  <input type="number" id="questionsGoal" class="form-input" min="0" value="100" style="max-width: 100px; margin: 0 auto;">
+                  <div class="goal-progress-text" id="questionsGoalText">0 / 100</div>
+                </div>
+
               </div>
 
-              <!-- Questions Goal -->
-              <div class="goal-box">
-                <label class="form-label">Daily Questions Goal</label>
-                <input type="number" id="questionsGoal" class="form-input" min="0" value="100" style="max-width: 100px; margin: 0 auto;">
-                <div class="goal-progress-text" id="questionsGoalText">0 / 100</div>
-              </div>
-
-              <!-- Subject Question Inputs -->
-              <div class="goal-box subject-questions-box">
-                <label class="form-label">Questions by Subject</label>
+              <!-- Expanded Today's Questions Box -->
+              <div class="goal-box subject-questions-box expanded">
+                <label class="form-label">Today's Questions</label>
+                
                 <div class="subject-input-row">
-                  <span>Physics</span>
+                  <i class="ph-fill ph-magnet subject-icon" style="color: rgb(244, 63, 94)"></i>
+                  <span class="subject-name">Physics</span>
                   <input type="number" id="qPhy" class="form-input" min="0" value="0">
                 </div>
+                
                 <div class="subject-input-row">
-                  <span>Chemistry</span>
+                  <i class="ph-fill ph-atom subject-icon" style="color: rgb(59, 130, 246)"></i>
+                  <span class="subject-name">Chemistry</span>
                   <input type="number" id="qChem" class="form-input" min="0" value="0">
                 </div>
+                
                 <div class="subject-input-row">
-                  <span>Maths</span>
+                  <i class="ph-fill ph-calculator subject-icon" style="color: rgb(139, 92, 246)"></i>
+                  <span class="subject-name">Maths</span>
                   <input type="number" id="qMaths" class="form-input" min="0" value="0">
                 </div>
               </div>
