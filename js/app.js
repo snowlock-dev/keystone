@@ -2615,6 +2615,363 @@ initTaskset();
 })();
 
 
+const GlobalSearch = {
+  overlay: null,
+  input: null,
+  results: null,
+  modeBadge: null,
+  isOpen: false,
+  selectedIndex: 0,
+  currentResults: [],
+
+  init() {
+    this.overlay = document.createElement('div');
+    this.overlay.className = 'gs-overlay';
+    this.overlay.innerHTML = `
+      <div class="gs-modal" role="dialog" aria-label="Global Search">
+        <div class="gs-input-wrap">
+          <i class="ph ph-magnifying-glass gs-search-icon"></i>
+          <input type="text" class="gs-input" id="gsInput"
+                 placeholder="Search tasks & errors…  ( !t tasks · !e errors )"
+                 autocomplete="off" spellcheck="false" />
+          <span class="gs-mode-badge" id="gsModeBadge"></span>
+          <kbd class="gs-kbd">ESC</kbd>
+        </div>
+        <div class="gs-results" id="gsResults"></div>
+        <div class="gs-footer">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> open</span>
+          <span><kbd>esc</kbd> close</span>
+          <div class="gs-footer-spacer"></div>
+          <span class="gs-hint">!t tasks</span>
+          <span class="gs-hint">!e errors</span>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(this.overlay);
+
+    this.input     = this.overlay.querySelector('#gsInput');
+    this.results   = this.overlay.querySelector('#gsResults');
+    this.modeBadge = this.overlay.querySelector('#gsModeBadge');
+
+    this.input.addEventListener('input', () => this.handleInput());
+    this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+    this.overlay.addEventListener('click', (e) => {
+      if (e.target === this.overlay) this.close();
+    });
+  },
+
+  open() {
+    if (this.isOpen) return;
+    // Close any other open modal
+    if (DOM.sessionModal && DOM.sessionModal.classList.contains('active')) {
+      DOM.sessionModal.classList.remove('active');
+    }
+    this.isOpen = true;
+    this.overlay.classList.add('active');
+    this.input.value = '';
+    this.selectedIndex = 0;
+    this.currentResults = [];
+    this.renderResults();
+    requestAnimationFrame(() => this.input.focus());
+  },
+
+  close() {
+    if (!this.isOpen) return;
+    this.isOpen = false;
+    this.overlay.classList.remove('active');
+    this.input.blur();
+  },
+
+  toggle() {
+    this.isOpen ? this.close() : this.open();
+  },
+
+  // --- Fuzzy match: substring or subsequence ---
+  fuzzyMatch(haystack, needle) {
+    if (!needle) return true;
+    if (haystack.includes(needle)) return true;
+    let ni = 0;
+    for (let i = 0; i < haystack.length && ni < needle.length; i++) {
+      if (haystack[i] === needle[ni]) ni++;
+    }
+    return ni === needle.length;
+  },
+
+  // --- Highlight the matched portion of text ---
+  highlight(text, query) {
+    if (!query) return escapeHtml(text);
+    const lower = text.toLowerCase();
+    const idx = lower.indexOf(query.toLowerCase());
+    if (idx === -1) return escapeHtml(text);
+    return escapeHtml(text.substring(0, idx)) +
+      '<mark style="background:rgba(139,92,246,.3);color:inherit;border-radius:2px;padding:0 1px">' +
+      escapeHtml(text.substring(idx, idx + query.length)) +
+      '</mark>' +
+      escapeHtml(text.substring(idx + query.length));
+  },
+
+  handleInput() {
+    const raw = this.input.value.trim();
+    const query = raw.toLowerCase();
+
+    // Parse bangs: !t --> tasks only, !e --> errors only
+    let mode = 'all';
+    let searchText = query;
+
+    const bangMatch = query.match(/^!(t|e)\s*(.*)/);
+    if (bangMatch) {
+      mode = bangMatch[1] === 't' ? 'tasks' : 'errors';
+      searchText = bangMatch[2];
+    }
+
+    // Update mode badge
+    this.modeBadge.classList.remove('active');
+    if (mode === 'tasks') {
+      this.modeBadge.textContent = 'Tasks';
+      this.modeBadge.style.background = 'rgba(139,92,246,.15)';
+      this.modeBadge.style.color = 'rgb(139,92,246)';
+      this.modeBadge.classList.add('active');
+    } else if (mode === 'errors') {
+      this.modeBadge.textContent = 'Errors';
+      this.modeBadge.style.background = 'rgba(244,63,94,.15)';
+      this.modeBadge.style.color = 'rgb(244,63,94)';
+      this.modeBadge.classList.add('active');
+    }
+
+    const needle = searchText.toLowerCase();
+    const results = [];
+
+    // -- Search Tasks (daily + global) --
+    if (mode === 'all' || mode === 'tasks') {
+      // Global todos
+      const globalTodos = Storage.getGlobalTodos();
+      for (const todo of globalTodos) {
+        if (this.fuzzyMatch(todo.text.toLowerCase(), needle)) {
+          results.push({
+            type: 'task',
+            title: todo.text,
+            subtitle: 'Global Task' + (todo.completed ? ' · ✓ Completed' : ''),
+            icon: todo.completed ? 'ph-fill ph-check-circle' : 'ph ph-list-checks',
+            color: 'rgb(139,92,246)',
+            searchText,
+            action: () => {
+              switchSection('taskflow');
+              tsSwitchTab('taskset');
+            }
+          });
+        }
+      }
+
+      // Daily todos across ALL days
+      const days = Storage.read().tracker.days;
+      for (const [dKey, day] of Object.entries(days)) {
+        if (!Array.isArray(day.todos)) continue;
+        const parts = dKey.split('-').map(Number);
+        const y = parts[0], m = parts[1] - 1, d = parts[2];
+        const dateObj = new Date(y, m, d);
+        const dateLabel = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const isToday = dayKey(new Date()) === dKey;
+
+        for (const todo of day.todos) {
+          if (this.fuzzyMatch(todo.text.toLowerCase(), needle)) {
+            results.push({
+              type: 'task',
+              title: todo.text,
+              subtitle: (isToday ? 'Today · ' : dateLabel + ' · ') + 'Daily Task' +
+                        (todo.completed ? ' · ✓ Completed' : ''),
+              icon: todo.completed ? 'ph-fill ph-check-circle' : 'ph ph-clipboard-text',
+              color: 'rgb(59,130,246)',
+              searchText,
+              action: () => {
+                tfSelectedYear = y;
+                tfSelectedMonth = m;
+                tfSelectedDay = d;
+                switchSection('taskflow');
+                tsSwitchTab('daily');
+                tfSwitchDay();
+              }
+            });
+          }
+        }
+      }
+    }
+
+    // -- Search Errors --
+    if (mode === 'all' || mode === 'errors') {
+      const errors = Storage.getErrors().sort((a, b) => new Date(b.date) - new Date(a.date));
+      for (const err of errors) {
+        const haystack = (err.chapter + ' ' + err.errorType + ' ' + err.takeaway).toLowerCase();
+        if (this.fuzzyMatch(haystack, needle)) {
+          const subj = subjectByKey(err.subject);
+          const dateObj = new Date(err.date);
+          const dateLabel = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          results.push({
+            type: 'error',
+            title: err.chapter,
+            subtitle: subj.name + ' · ' + err.errorType + ' · ' + dateLabel,
+            icon: subj.icon,
+            color: subj.color,
+            searchText,
+            action: () => {
+              switchSection('errors');
+              setTimeout(() => {
+                const card = document.querySelector('[data-error-id="' + err.id + '"]');
+                if (card) {
+                  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  card.style.transition = 'box-shadow .3s ease';
+                  card.style.boxShadow = '0 0 0 2px ' + subj.color;
+                  setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+                }
+              }, 350);
+            }
+          });
+        }
+      }
+    }
+
+    this.currentResults = results.slice(0, 50);
+    this.selectedIndex = 0;
+    this.renderResults();
+  },
+
+  renderResults() {
+    this.results.innerHTML = '';
+
+    if (this.currentResults.length === 0) {
+      const query = this.input.value.trim();
+      if (!query) {
+        this.results.innerHTML = `
+          <div class="gs-empty">
+            <i class="ph ph-magnifying-glass"></i>
+            <p>Search across all your tasks and error logs</p>
+            <div class="gs-empty-hints">
+              <span class="gs-hint">!t tasks only</span>
+              <span class="gs-hint">!e errors only</span>
+            </div>
+          </div>`;
+      } else {
+        this.results.innerHTML = `
+          <div class="gs-empty">
+            <i class="ph ph-binocular"></i>
+            <p>No results for "${escapeHtml(query)}"</p>
+          </div>`;
+      }
+      return;
+    }
+
+    // Group results by type when in "all" mode
+    const tasks = this.currentResults.filter(r => r.type === 'task');
+    const errors = this.currentResults.filter(r => r.type === 'error');
+    const showHeaders = tasks.length > 0 && errors.length > 0;
+
+    let globalIndex = 0;
+
+    const renderItem = (result) => {
+      const item = document.createElement('div');
+      item.className = 'gs-item' + (globalIndex === this.selectedIndex ? ' selected' : '');
+      item.dataset.index = globalIndex;
+      item.innerHTML = `
+        <div class="gs-item-icon" style="background:${result.color}22;color:${result.color}">
+          <i class="ph-fill ${result.icon}"></i>
+        </div>
+        <div class="gs-item-info">
+          <div class="gs-item-title">${this.highlight(result.title, result.searchText)}</div>
+          <div class="gs-item-subtitle">${escapeHtml(result.subtitle)}</div>
+        </div>
+        <div class="gs-item-badge">${result.type === 'task' ? 'Task' : 'Error'}</div>
+      `;
+      item.addEventListener('click', () => {
+        this.selectedIndex = parseInt(item.dataset.index);
+        this.selectResult();
+      });
+      item.addEventListener('mouseenter', () => {
+        this.selectedIndex = parseInt(item.dataset.index);
+        this.updateSelectionVisual();
+      });
+      this.results.appendChild(item);
+      globalIndex++;
+    };
+
+    if (showHeaders && tasks.length > 0) {
+      const hdr = document.createElement('div');
+      hdr.className = 'gs-section-header';
+      hdr.textContent = 'Tasks · ' + tasks.length;
+      this.results.appendChild(hdr);
+    }
+    tasks.forEach(renderItem);
+
+    if (showHeaders && errors.length > 0) {
+      const hdr = document.createElement('div');
+      hdr.className = 'gs-section-header';
+      hdr.textContent = 'Errors · ' + errors.length;
+      this.results.appendChild(hdr);
+    }
+    errors.forEach(renderItem);
+
+    this.updateSelectionVisual();
+  },
+
+  updateSelectionVisual() {
+    const items = this.results.querySelectorAll('.gs-item');
+    items.forEach((item, i) => {
+      item.classList.toggle('selected', i === this.selectedIndex);
+    });
+    if (items[this.selectedIndex]) {
+      items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  },
+
+  handleKeydown(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (this.currentResults.length === 0) return;
+      this.selectedIndex = (this.selectedIndex + 1) % this.currentResults.length;
+      this.updateSelectionVisual();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (this.currentResults.length === 0) return;
+      this.selectedIndex = (this.selectedIndex - 1 + this.currentResults.length) % this.currentResults.length;
+      this.updateSelectionVisual();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      this.selectResult();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this.close();
+    }
+  },
+
+  selectResult() {
+    const result = this.currentResults[this.selectedIndex];
+    if (!result) return;
+    this.close();
+    if (typeof result.action === 'function') {
+      result.action();
+    }
+  }
+};
+
+// Initialize
+GlobalSearch.init();
+
+// Ctrl+K / Cmd+K shortcut
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    GlobalSearch.toggle();
+  }
+});
+
+// Refresh search results when another tab modifies data
+window.addEventListener('storage', (e) => {
+  if (e.key !== STORAGE_KEY) return;
+  if (GlobalSearch.isOpen) {
+    GlobalSearch.handleInput();
+  }
+});
+
+
 // [IMPROVEMENT] CROSS-TAB SYNCHRONIZATION
 window.addEventListener('storage', (e) => {
   // Only react to changes on our primary storage key (ignore _tmp backup operations)
