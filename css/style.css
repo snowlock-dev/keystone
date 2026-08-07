@@ -1432,16 +1432,6 @@ button:disabled {
   text-align: center;
 }
 
-.subject-input-row {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  font-size: 1rem;
-  color: var(--fg);
-  font-weight: 500;
-  margin-bottom: 0;
-}
-
 .subject-icon {
   font-size: 1.4rem;
   width: 24px;
@@ -1459,7 +1449,14 @@ button:disabled {
   max-width: 120px;
   text-align: center; 
   font-size: 1.1rem;
-  padding: 0.75rem 1rem; /* Tighter vertical padding */
+  padding: 0.75rem 1rem;
+}
+
+/* Hide number input spinners to keep text perfectly centered */
+.subject-input-row input[type=number]::-webkit-inner-spin-button,
+.subject-input-row input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* Hide icons on smaller screens to save space */
