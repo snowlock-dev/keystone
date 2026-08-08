@@ -1053,7 +1053,7 @@ function renderSessionLog() {
               <i class="ph-fill ${subj.icon}"></i> ${subj.name}
             </span>
         </div>
-        <div class="session-desc">${s.description || 'Ended at ' + time}</div>
+        <div class="session-desc">${escapeHtml(s.description) || 'Ended at ' + time}</div>
         <div class="session-time">Logged today</div>
         <div class="session-duration">${formatDurationShort(s.duration)}</div>
       </div>
