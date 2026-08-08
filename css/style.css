@@ -1685,12 +1685,13 @@ body.zen-mode .clock-hint {
   opacity: 0.5 !important;
 }
 
-/* --- Massive Session & Test Cards --- */
+/* --- Session & Test Cards --- */
 #sessionLog, #testHistoryList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 2rem;
   padding-right: 0.5rem;
+  padding-top: 4px; /* added to account for the translate effect */
   max-height: none !important; 
 }
 
@@ -1811,6 +1812,7 @@ body.zen-mode .clock-hint {
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); 
   gap: 2rem; 
   padding-right: 0.5rem;
+  padding-top: 4px; /* added to account for the 4px translate effect */
 }
 
 .error-card {
