@@ -40,6 +40,12 @@ const DEFAULT_GOALS     = { hours: 4, minutes: 0, questions: 50 };
 const DEFAULT_QUESTIONS = { phy: 0, chem: 0, maths: 0 };
 
 
+if (typeof marked !== 'undefined') {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+
+
+
 // --- UTILITY FUNCTIONS --- //
 
 // Unified ID generator to prevent collisions
@@ -821,6 +827,7 @@ function renderCalendar() {
       tfSelectedMonth = calMonth;
       tfSelectedDay = d;
       switchSection('taskflow');
+      tsSwitchTab('daily');
       tfSwitchDay();
     });
 
@@ -1689,10 +1696,10 @@ function renderErrorLog() {
       let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); 
       if (typeof marked !== 'undefined') {
         try {
-          marked.setOptions({ breaks: true, gfm: true });
           parsedTakeaway = marked.parse(e.takeaway || "");
         } catch (err) {
           console.error("Markdown parsing failed:", err);
+          showToast('Markdown Parsing Failed!', 'error')
         }
       }
       takeawayHtml = `<div class="error-takeaway markdown-body">${parsedTakeaway}</div>`;
