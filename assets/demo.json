@@ -1,0 +1,402 @@
+{
+  "app": "Keystone",
+  "version": "1",
+  "exportedAt": "2026-08-08T12:00:33.473Z",
+  "data": {
+    "version": 1,
+    "notes": {
+      "content": "Hello Keystone!\n\nTry writing something here."
+    },
+    "tracker": {
+      "goals": {
+        "hours": 3,
+        "minutes": 0,
+        "questions": 35
+      },
+      "days": {
+        "2026-08-05": {
+          "sessions": [
+            {
+              "id": "a2852a10-0e37-4ed2-9223-baa3f9073016",
+              "subject": "maths",
+              "description": "HW",
+              "start": "2026-08-05T16:41:57.839Z",
+              "end": "2026-08-05T17:11:57.839Z",
+              "duration": 1800
+            },
+            {
+              "id": "79a65891-c395-4ad4-8c06-01389477f103",
+              "subject": "physics",
+              "description": "HW",
+              "start": "2026-08-05T16:42:09.060Z",
+              "end": "2026-08-05T17:12:09.060Z",
+              "duration": 1800
+            }
+          ],
+          "questions": {
+            "phy": 15,
+            "chem": 10,
+            "maths": 20
+          },
+          "todos": [
+            {
+              "id": "370a7a8b-1849-46cf-b743-8798474be7a1",
+              "text": "Maths H.W: Series & Sequences",
+              "completed": true,
+              "createdAt": 1785945458219
+            },
+            {
+              "id": "d6914c75-b05f-4a99-a35f-ba71789ca136",
+              "text": "Physics H.W: Kinematics",
+              "completed": true,
+              "createdAt": 1785945149749
+            }
+          ]
+        },
+        "2026-08-06": {
+          "sessions": [
+            {
+              "id": "410aafa5-8965-4cc7-b499-769bca8b3009",
+              "subject": "maths",
+              "description": "Practice set",
+              "start": "2026-08-06T17:00:21.658Z",
+              "end": "2026-08-06T17:30:22.658Z",
+              "duration": 1801
+            },
+            {
+              "id": "fb94757c-c30d-4572-95d0-88b2c28237b7",
+              "subject": "chem",
+              "description": "Chemical Bonding Chapter Reading",
+              "start": "2026-08-06T17:59:07.616Z",
+              "end": "2026-08-06T18:29:08.616Z",
+              "duration": 1801
+            }
+          ],
+          "questions": {
+            "phy": 0,
+            "chem": 10,
+            "maths": 10
+          },
+          "todos": [
+            {
+              "id": "6d8821cb-f20a-41e3-956e-07ba984563cd",
+              "text": "Chem Practice: Chemical Bonding",
+              "completed": true,
+              "createdAt": 1786040828453
+            },
+            {
+              "id": "ece3cf99-da14-47c5-aea7-315c7a2ad70f",
+              "text": "Chem Revision: Chemical Bonding Lewis Dot Structure",
+              "completed": true,
+              "createdAt": 1786037025560
+            }
+          ]
+        },
+        "2026-08-07": {
+          "sessions": [
+            {
+              "id": "813aafa5-8965-4cc7-b499-769bca8b3110",
+              "subject": "physics",
+              "description": "Solving modules",
+              "start": "2026-08-07T15:00:00.000Z",
+              "end": "2026-08-07T16:30:00.000Z",
+              "duration": 5400
+            }
+          ],
+          "questions": {
+            "phy": 25,
+            "chem": 5,
+            "maths": 15
+          },
+          "todos": [
+            {
+              "id": "9f254c72-e8c8-4467-b98d-56eb48405bad",
+              "text": "Physics HW: Kinematics Exercise-2 (Q10-30)",
+              "completed": true,
+              "createdAt": 1786035607704
+            },
+            {
+              "id": "2254c72-e8c8-4467-b98d-56eb48405bde",
+              "text": "Maths Revision: Quadratic Roots Properties",
+              "completed": false,
+              "createdAt": 1786122000000
+            }
+          ]
+        },
+        "2026-08-08": {
+          "sessions": [
+            {
+              "id": "924aafa5-8965-4cc7-b499-769bca8b3221",
+              "subject": "maths",
+              "description": "Mock Test review",
+              "start": "2026-08-08T10:00:00.000Z",
+              "end": "2026-08-08T12:00:00.000Z",
+              "duration": 7200
+            }
+          ],
+          "questions": {
+            "phy": 10,
+            "chem": 20,
+            "maths": 30
+          },
+          "todos": [
+            {
+              "id": "3354c72-e8c8-4467-b98d-56eb48405bff",
+              "text": "Mock-1 Analysis & Error Log update",
+              "completed": true,
+              "createdAt": 1786208400000
+            },
+            {
+              "id": "4454c72-e8c8-4467-b98d-56eb48405c00",
+              "text": "Chem Assignment: Mole Concept Practice",
+              "completed": true,
+              "createdAt": 1786208400000
+            }
+          ]
+        },
+        "2026-08-09": {
+          "sessions": [
+            {
+              "id": "535aafa5-8965-4cc7-b499-769bca8b3332",
+              "subject": "chem",
+              "description": "Periodic table practice",
+              "start": "2026-08-09T14:00:00.000Z",
+              "end": "2026-08-09T16:00:00.000Z",
+              "duration": 7200
+            },
+            {
+              "id": "635aafa5-8965-4cc7-b499-769bca8b3333",
+              "subject": "physics",
+              "description": "NLM practice",
+              "start": "2026-08-09T16:30:00.000Z",
+              "end": "2026-08-09T18:00:00.000Z",
+              "duration": 5400
+            }
+          ],
+          "questions": {
+            "phy": 20,
+            "chem": 25,
+            "maths": 10
+          },
+          "todos": [
+            {
+              "id": "5554c72-e8c8-4467-b98d-56eb48405c11",
+              "text": "Physics Test-1 Prep: Laws of Motion",
+              "completed": true,
+              "createdAt": 1786294800000
+            },
+            {
+              "id": "6654c72-e8c8-4467-b98d-56eb48405c22",
+              "text": "Maths DPP: Functions & Limits",
+              "completed": false,
+              "createdAt": 1786294800000
+            }
+          ]
+        },
+        "2026-08-10": {
+          "sessions": [
+            {
+              "id": "745aafa5-8965-4cc7-b499-769bca8b3444",
+              "subject": "maths",
+              "description": "Calculus practice",
+              "start": "2026-08-10T11:00:00.000Z",
+              "end": "2026-08-10T13:00:00.000Z",
+              "duration": 7200
+            }
+          ],
+          "questions": {
+            "phy": 10,
+            "chem": 15,
+            "maths": 25
+          },
+          "todos": [
+            {
+              "id": "7754c72-e8c8-4467-b98d-56eb48405c33",
+              "text": "Complete pending Maths DPP",
+              "completed": true,
+              "createdAt": 1786381200000
+            },
+            {
+              "id": "8854c72-e8c8-4467-b98d-56eb48405c44",
+              "text": "Revise Organic Chemistry Nomenclature",
+              "completed": false,
+              "createdAt": 1786381200000
+            }
+          ]
+        },
+        "2026-08-11": {
+          "sessions": [
+            {
+              "id": "855aafa5-8965-4cc7-b499-769bca8b3555",
+              "subject": "physics",
+              "description": "Full mock test simulation",
+              "start": "2026-08-11T09:00:00.000Z",
+              "end": "2026-08-11T12:00:00.000Z",
+              "duration": 10800
+            }
+          ],
+          "questions": {
+            "phy": 30,
+            "chem": 30,
+            "maths": 30
+          },
+          "todos": [
+            {
+              "id": "9954c72-e8c8-4467-b98d-56eb48405c55",
+              "text": "Attempt Mock-2 Exam",
+              "completed": true,
+              "createdAt": 1786467600000
+            },
+            {
+              "id": "0064c72-e8c8-4467-b98d-56eb48405c66",
+              "text": "Update formula notes",
+              "completed": false,
+              "createdAt": 1786467600000
+            }
+          ]
+        }
+      },
+      "activeSession": null
+    },
+    "globalTodos": [
+      {
+        "id": "g-1111-2222-3333",
+        "text": "Organize short notes binder",
+        "completed": false,
+        "createdAt": 1785945458219
+      }
+    ],
+    "tests": [
+      {
+        "id": "7b97938b-6870-4a64-9008-4a2b0a77e54a",
+        "date": "2026-05-02T14:43:00.000Z",
+        "name": "Test-1",
+        "totalMarks": 300,
+        "obtainedMarks": 233,
+        "accuracy": 83
+      },
+      {
+        "id": "2c154ac0-8238-4aa7-a3bb-b584a3647263",
+        "date": "2026-05-16T14:45:00.000Z",
+        "name": "Test-2",
+        "totalMarks": 300,
+        "obtainedMarks": 195,
+        "accuracy": 79
+      },
+      {
+        "id": "07abe7a8-ede9-42bb-bfaa-8801b7a3e4e4",
+        "date": "2026-06-20T14:46:00.000Z",
+        "name": "Mock-1",
+        "totalMarks": 300,
+        "obtainedMarks": 225,
+        "accuracy": 91.8
+      },
+      {
+        "id": "44820392-88f2-418c-bea0-6fdffdd4bbda",
+        "date": "2026-06-21T14:47:00.000Z",
+        "name": "Mock-2",
+        "totalMarks": 300,
+        "obtainedMarks": 181,
+        "accuracy": 80.7
+      },
+      {
+        "id": "30560900-5d78-42ae-b2cb-da3332c643f7",
+        "date": "2026-07-17T14:48:00.000Z",
+        "name": "Test-3",
+        "totalMarks": 300,
+        "obtainedMarks": 186,
+        "accuracy": 81.8
+      },
+      {
+        "id": "47238d38-7fe9-43e1-9779-9ae65cd7e901",
+        "date": "2026-07-19T14:48:00.000Z",
+        "name": "Test-4",
+        "totalMarks": 300,
+        "obtainedMarks": 225,
+        "accuracy": 85.7
+      },
+      {
+        "id": "43854d88-d0ca-47e5-a273-f1245ed81bce",
+        "date": "2026-08-02T14:50:00.000Z",
+        "name": "Grand Test - 1",
+        "totalMarks": 300,
+        "obtainedMarks": 194,
+        "accuracy": 90
+      },
+      {
+        "id": "99854d88-d0ca-47e5-a273-f1245ed81bcf",
+        "date": "2026-08-08T14:50:00.000Z",
+        "name": "Mock-3",
+        "totalMarks": 300,
+        "obtainedMarks": 210,
+        "accuracy": 86.5
+      }
+    ],
+    "errors": [
+      {
+        "id": "0fbb7c1f-b603-4161-af3e-6165179b6ac6",
+        "date": "2026-08-06T13:17:21.235Z",
+        "subject": "physics",
+        "chapter": "Laws of Motion",
+        "errorType": "Calculation Error",
+        "takeaway": "In a lift with acceleration, the pseudo-force & acceleration is always applied to the opposite direction as to the acceleration of the lift"
+      },
+      {
+        "id": "7ebeeb10-c294-45fd-af26-7aa3c63853c8",
+        "date": "2026-08-06T13:18:53.416Z",
+        "subject": "physics",
+        "chapter": "Motion In One Dimension",
+        "errorType": "Conceptual Gap",
+        "takeaway": "**Spatial acceleration** (`dv/dx`) is acceleration defined in terms of rate of change of velocity over change in distance."
+      },
+      {
+        "id": "95220ff7-46f1-4527-a271-893df3549d47",
+        "date": "2026-08-06T13:19:42.237Z",
+        "subject": "physics",
+        "chapter": "Motion in Two DImensions",
+        "errorType": "Conceptual Gap",
+        "takeaway": "**Projectile Motion** : For comparison between range (ratio) of two objects, if angles are complementary, ratio is `1:1`"
+      },
+      {
+        "id": "aa801349-7f2a-40bf-bfdb-c1b6709607d6",
+        "date": "2026-08-06T13:20:17.266Z",
+        "subject": "chem",
+        "chapter": "Structure of Atom",
+        "errorType": "Conceptual Gap",
+        "takeaway": "Radial Nodes: `n-l-1` -→ look like spheres Angular Nodes: `l` -→ look like planes"
+      },
+      {
+        "id": "c488e52d-563b-45f7-b352-6c9094913474",
+        "date": "2026-08-06T13:21:03.086Z",
+        "subject": "chem",
+        "chapter": "Structure of Atom",
+        "errorType": "Conceptual Gap",
+        "takeaway": "Magnetic Moment (Unit: BM) measures paramagnetism based on the number of unpaired electron N with formula:\n\n`sqrt(N * (N+2)) BM`\n\nFurther more, the first digit of the MM corresponds to unpaired electrons."
+      },
+      {
+        "id": "a0d4af4c-fc01-4f3d-8572-4eee48a841b6",
+        "date": "2026-08-06T13:21:29.918Z",
+        "subject": "maths",
+        "chapter": "Limits",
+        "errorType": "Calculation Error",
+        "takeaway": "**L'hopital Rule**: Differentiate DIFFERENTLY for both functions"
+      },
+      {
+        "id": "ab627d35-2d76-44e7-b941-c4f58b2d922f",
+        "date": "2026-08-06T13:22:00.897Z",
+        "subject": "maths",
+        "chapter": "Quadratic Equation",
+        "errorType": "Conceptual Gap",
+        "takeaway": "**CONSTRAINT BOXES**: Write out the constraints for answers, before finalizing it. (like `x > 2`, `x ≠ 0`, etc.)"
+      },
+      {
+        "id": "83e94c01-a916-4af1-8916-240d859a9c4f",
+        "date": "2026-08-06T13:22:29.023Z",
+        "subject": "maths",
+        "chapter": "Quadratic Equation",
+        "errorType": "Conceptual Gap",
+        "takeaway": "During **Wavy-Curve** Method, keep a close eye on any factors like `x` for zero (like an additional set could be {0})"
+      }
+    ]
+  }
+}
