@@ -1025,7 +1025,7 @@ function renderSessionLog() {
 
   if (todaySessions.length === 0) {
     DOM.sessionLog.innerHTML =
-      '<div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">' +
+      '<div style="grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">' +
       'No sessions logged today. Get started!</div>';
     return;
   }
@@ -1428,7 +1428,7 @@ function renderTestDashboard() {
   // 3. History List
   DOM.testHistoryList.innerHTML = '';
   if (tests.length === 0) {
-    DOM.testHistoryList.innerHTML = '<div style="text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">No tests logged yet.</div>';
+    DOM.testHistoryList.innerHTML = '<div style="grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">No tests logged yet.</div>';
     return;
   }
   [...tests].reverse().forEach(t => {
