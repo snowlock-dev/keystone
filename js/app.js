@@ -39,15 +39,16 @@ const KEYBOARD_SHORTCUTS = {
 const DEFAULT_GOALS     = { hours: 4, minutes: 0, questions: 50 };
 const DEFAULT_QUESTIONS = { phy: 0, chem: 0, maths: 0 };
 
+
 // --- UTILITY FUNCTIONS --- //
 
-// [IMPROVEMENT] Unified ID generator to prevent collisions
+// Unified ID generator to prevent collisions
 function generateId() {
   if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
 }
 
-// [IMPROVEMENT] Deep clone helper for transactional updates — never mutate cached state directly
+// Deep clone helper for transactional updates
 function deepClone(obj) {
   if (typeof structuredClone === 'function') {
     try { return structuredClone(obj); } catch (e) { /* fall through */ }
@@ -63,6 +64,7 @@ function dayKey(date) {
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
+
   return d;
 }
 
@@ -70,12 +72,14 @@ function formatTime(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
+
   return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
 }
 
 function formatDurationShort(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
+
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
@@ -90,11 +94,11 @@ function checkStorageSize() {
   if (MB > 4) {
     const warningMsg = `Storage size is ${MB.toFixed(2)}MB. Approaching the 5MB limit.`;
     console.warn("Keystone:", warningMsg);
-    showToast(warningMsg, 'error'); // 'error' gives it the red border to grab attention
+    showToast(warningMsg, 'error');
   }
 }
 
-// [IMPROVEMENT] Enhanced debounce with flush() and isPending() for safe cleanup on unload
+// debounce with flush() and isPending() for safe cleanup on unload
 function debounce(fn, ms) {
   let timer;
   let lastArgs;
@@ -115,7 +119,7 @@ function debounce(fn, ms) {
     pending = false;
     lastArgs = null;
   };
-  // [IMPROVEMENT] Immediately invoke pending callback — used in beforeunload to flush saves
+  // Immediately invoke pending callback
   wrapped.flush = () => {
     if (pending) {
       clearTimeout(timer);
@@ -127,7 +131,7 @@ function debounce(fn, ms) {
     }
     return false;
   };
-  // [IMPROVEMENT] Check if a debounced call is pending — used to avoid overwriting local edits during cross-tab sync
+  // [Check if a debounced call is pending (used to avoid overwriting local edits during cross-tab sync)
   wrapped.isPending = () => pending;
   return wrapped;
 }
@@ -136,7 +140,7 @@ function subjectByKey(key) {
   return SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
 }
 
-// [IMPROVEMENT] Validate a single session object — returns normalized session or null if fundamentally invalid
+// Validate a single session object; returns normalized session or null if fundamentally invalid
 function validateSession(s) {
   if (!s || typeof s !== "object") return null;
 
@@ -152,13 +156,13 @@ function validateSession(s) {
       ? s.subject
       : "physics";
 
-  // Dates: must be valid ISO strings — discard session if they cannot be parsed
+  // Dates: must be valid ISO strings; discard session if they cannot be parsed
   const startStr = typeof s.start === "string" ? s.start : null;
   const endStr   = typeof s.end   === "string" ? s.end   : null;
   if (!startStr || isNaN(new Date(startStr).getTime())) return null;
   if (!endStr   || isNaN(new Date(endStr).getTime()))   return null;
 
-  // Duration: must be a finite, non-negative number — discard if invalid
+  // Duration: must be a finite, non-negative number; discard if invalid
   const duration = typeof s.duration === "number" ? s.duration : null;
   if (duration === null || !Number.isFinite(duration) || duration < 0) return null;
 
@@ -172,7 +176,7 @@ function validateSession(s) {
   };
 }
 
-// [IMPROVEMENT] Enhanced structural validation — now validates sessions and null-checks questions
+
 function validateData(data) {
   if (!data) return false;
   if (!data.tracker) return false;
@@ -189,7 +193,7 @@ function validateData(data) {
     if (!Array.isArray(day.sessions)) return false;
     if (typeof day.questions !== "object" || day.questions === null) return false;
 
-    // [IMPROVEMENT] Validate every session before saving
+    // Validate every session before saving
     for (const s of day.sessions) {
       if (!validateSession(s)) return false;
     }
@@ -201,11 +205,12 @@ function validateData(data) {
   return true;
 }
 
+
 // --- STORAGE LAYER --- //
 
 const Storage = {
   _cache: null,
-  // [IMPROVEMENT] Cached flat list of all sessions — invalidated on every write
+  // Cached flat list of all sessions; invalidated on every write
   _allSessionsCache: null,
 
   _defaultData() {
@@ -223,7 +228,7 @@ const Storage = {
     };
   },
 
-  // [IMPROVEMENT] Transactional update — clone → modify → validate → atomic swap.
+  // Transactional update: clone --> modify --> validate --> atomic swap.
   // If anything fails the original _cache is left untouched.
   transaction(fn) {
     const current = this.read();
@@ -244,7 +249,6 @@ const Storage = {
       // Persist to localStorage
       const saved = this.write();
       if (!saved) {
-        // Restore original on save failure
         this._cache = current;
         return false;
       }
@@ -259,7 +263,7 @@ const Storage = {
     }
   },
 
-  // [IMPROVEMENT] Invalidate the sessions list cache — called after every successful write
+  // Invalidate the sessions list cache; called after every successful write
   _invalidateSessionsCache() {
     this._allSessionsCache = null;
   },
@@ -271,9 +275,7 @@ const Storage = {
       return normalized;
     }
 
-    // ------------------------
     // Notes
-    // ------------------------
     if (data.notes && typeof data.notes === "object") {
       normalized.notes = {
         content:
@@ -283,19 +285,17 @@ const Storage = {
       };
     }
 
-    // ------------------------
     // Tracker
-    // ------------------------
     if (data.tracker && typeof data.tracker === "object") {
 
-      // Goals — [IMPROVEMENT] use Number.isFinite for proper numeric validation
+      // Goals
       normalized.tracker.goals = {
         hours:     Number.isFinite(data.tracker.goals?.hours)     ? data.tracker.goals.hours     : DEFAULT_GOALS.hours,
         minutes:   Number.isFinite(data.tracker.goals?.minutes)   ? data.tracker.goals.minutes   : DEFAULT_GOALS.minutes,
         questions: Number.isFinite(data.tracker.goals?.questions) ? data.tracker.goals.questions : DEFAULT_GOALS.questions
       };
 
-      // Active timer session — [IMPROVEMENT] use Number.isSafeInteger for timestamps
+      // Active timer session
       if (data.tracker.activeSession && typeof data.tracker.activeSession === "object") {
         const as = data.tracker.activeSession;
         normalized.tracker.activeSession = {
@@ -321,18 +321,14 @@ const Storage = {
             todos: []
           };
 
-          // ------------------------
-          // Sessions — [IMPROVEMENT] validate every session via validateSession()
-          // ------------------------
+          // Sessions
           if (Array.isArray(day.sessions)) {
             normalized.tracker.days[dayKey].sessions = day.sessions
-              .map(s => validateSession(s))   // Returns normalized session or null
-              .filter(s => s !== null);       // Discard invalid sessions
+              .map(s => validateSession(s)) // Returns normalized session or null
+              .filter(s => s !== null);     // Discard invalid sessions
           }
 
-          // ------------------------
-          // Questions — [IMPROVEMENT] use Number.isFinite
-          // ------------------------
+          // Questions
           if (day.questions && typeof day.questions === "object") {
             normalized.tracker.days[dayKey].questions = {
               phy:   Number.isFinite(day.questions.phy)   ? day.questions.phy   : 0,
@@ -341,9 +337,7 @@ const Storage = {
             };
           }
 
-          // ------------------------
-          // Todos — [IMPROVEMENT] use Number.isSafeInteger for createdAt timestamps
-          // ------------------------
+          // Todos
           if (Array.isArray(day.todos)) {
             normalized.tracker.days[dayKey].todos = day.todos
               .filter(t => t && typeof t === "object")
@@ -359,9 +353,7 @@ const Storage = {
       }
     }
 
-    // ------------------------
-    // Global Todos (Taskset) — [IMPROVEMENT] use Number.isSafeInteger for createdAt
-    // ------------------------
+    // Global Todos (Taskset)
     normalized.globalTodos = [];
     if (data && Array.isArray(data.globalTodos)) {
       normalized.globalTodos = data.globalTodos
@@ -467,7 +459,7 @@ const Storage = {
         return false;
       }
       const json = JSON.stringify(this._cache);
-      // Write to temp first, then overwrite real, then clean up — crash-safe atomic write
+      // Write to temp first, then overwrite real, then clean up
       localStorage.setItem(STORAGE_KEY + "_tmp", json);
       localStorage.setItem(STORAGE_KEY, json);
       localStorage.removeItem(STORAGE_KEY + "_tmp");
@@ -479,7 +471,7 @@ const Storage = {
   },
 
   replaceAll(data) {
-    // [IMPROVEMENT] Normalize and validate before replacing cache
+    // Normalize and validate before replacing cache
     const normalized = this._normalizeData(data);
     if (!validateData(normalized)) {
       console.error("Refusing to replace with invalid data");
@@ -490,22 +482,22 @@ const Storage = {
     return this.write();
   },
 
-  // -- Global Todos ------ [IMPROVEMENT] transactional + return copies
+  // -- Global Todos ------
   getGlobalTodos() { return deepClone(this.read().globalTodos || []); },
   setGlobalTodos(todos) {
     return this.transaction(draft => { draft.globalTodos = todos; });
   },
 
-  // -- Notes ------ [IMPROVEMENT] transactional
+  // -- Notes ------
   getNotes()       { return this.read().notes.content; },
   setNotes(text)   { return this.transaction(draft => { draft.notes.content = text; }); },
   clearNotes()     { return this.transaction(draft => { draft.notes.content = ''; }); },
 
-  // -- Goals ------ [IMPROVEMENT] transactional + return copy
+  // -- Goals ------
   getGoals()       { return { ...this.read().tracker.goals }; },
   setGoals(goals)  { return this.transaction(draft => { draft.tracker.goals = goals; }); },
 
-  // -- Active Session Persistence ------ [IMPROVEMENT] transactional + return copy
+  // -- Active Session Persistence ------
   getActiveSession() {
     const s = this.read().tracker.activeSession;
     return s ? { ...s } : null;
@@ -514,7 +506,7 @@ const Storage = {
     return this.transaction(draft => { draft.tracker.activeSession = session; });
   },
 
-  // [IMPROVEMENT] Ensure a day exists inside a transaction draft — never mutates _cache directly
+  // Ensure a day exists inside a transaction draft: never mutates _cache directly
   _ensureDayInDraft(draft, date) {
     const key  = dayKey(date);
     if (!draft.tracker.days[key]) {
@@ -531,7 +523,7 @@ const Storage = {
     return !!this.read().tracker.days[dayKey(date)];
   },
 
-  // -- Todos/Tasks ------ [IMPROVEMENT] transactional + return deep copies (no side effects on read)
+  // -- Todos/Tasks ------
   getTodos(date) {
     const day = this.read().tracker.days[dayKey(date)];
     return day ? deepClone(day.todos || []) : [];
@@ -548,13 +540,13 @@ const Storage = {
     return this.transaction(draft => { this._ensureDayInDraft(draft, date).questions = q; });
   },
 
-  // [IMPROVEMENT] Return deep clone to prevent external mutation of cached data
+  // Return deep clone to prevent external mutation of cached data
   getSessions(date) {
     const day = this.read().tracker.days[dayKey(date)];
     return day ? deepClone(day.sessions || []) : [];
   },
 
-  // [IMPROVEMENT] Validate session before adding; use transaction
+  // Validate session before adding; use transaction
   addSession(session) {
     const validated = validateSession(session);
     if (!validated) {
@@ -578,7 +570,7 @@ const Storage = {
     });
   },
 
-  // [IMPROVEMENT] Cache the flat sessions list — invalidated on every write and cross-tab sync
+  // Cache the flat sessions list; invalidated on every write and cross-tab sync
   allSessions() {
     if (this._allSessionsCache) return this._allSessionsCache;
 
@@ -590,7 +582,7 @@ const Storage = {
     return out;
   },
 
-  // -- Tests --
+  // -- Tests ----
   getTests() { return deepClone(this.read().tests || []); },
   addTest(test) { return this.transaction(draft => { draft.tests.push(test); }); },
   removeTest(id) {
@@ -601,7 +593,7 @@ const Storage = {
     });
   },
 
-  // -- Errors --
+  // -- Errors ----
   getErrors() { return deepClone(this.read().errors || []); },
   addError(error) { return this.transaction(draft => { draft.errors.push(error); }); },
   removeError(id) {
@@ -919,7 +911,6 @@ const activeTracker = {
   isPaused:          false
 };
 
-// [IMPROVEMENT] Reset in-memory fields only — does NOT write to storage.
 // Used during cross-tab sync to avoid triggering a write loop.
 function resetActiveTrackerFields() {
   activeTracker.subject           = 'physics';
@@ -1005,7 +996,7 @@ setInterval(() => {
   if (activeTracker.startedAt) updateTimerUI();
 }, 1000);
 
-// [IMPROVEMENT] Restore active session on load
+// Restore active session on load
 function initActiveSession() {
   const saved = Storage.getActiveSession();
   if (saved && (saved.startedAt || saved.isPaused)) {
@@ -1108,7 +1099,7 @@ DOM.saveModalBtn.addEventListener('click', () => {
 
 
 // -- DASHBOARD: STATS COMPUTATION -- //
-// [IMPROVEMENT] All functions below accept an optional `allSessions` array to avoid
+// All functions below accept an optional `allSessions` array to avoid
 // calling Storage.allSessions() multiple times during a single render cycle.
 
 function getTodayTotalSeconds(allSessions) {
@@ -1133,7 +1124,7 @@ function computeDailyTotals(numDays, allSessions) {
   return totals;
 }
 
-// [IMPROVEMENT] Accept cached sessions array to avoid redundant allSessions() calls
+// Accept cached sessions array to avoid redundant allSessions() calls
 function computeTimeStreak(allSessions) {
   let streak = 0;
   const sessions = allSessions || Storage.allSessions();
@@ -1191,7 +1182,7 @@ function computeQuestionStreak() {
 
 
 // -- DASHBOARD — RENDERING -- //
-// [IMPROVEMENT] Pass cached allSessions to every render function to avoid repeated reads
+// Pass cached allSessions to every render function to avoid repeated reads
 
 function renderStats(dailyTotals, allSessions) {
   const sessions = allSessions || Storage.allSessions();
@@ -1369,7 +1360,7 @@ function renderGoals(allSessions) {
   });
 });
 
-// Retrieve sessions once and pass to all render functions — avoids redundant allSessions() calls
+// Retrieve sessions once and pass to all render functions
 function renderDashboard() {
   const allSessions = Storage.allSessions(); // Single fetch for entire dashboard
   const dailyTotals = computeDailyTotals(7, allSessions);
@@ -1567,10 +1558,10 @@ if (DOM.testHistoryList) {
 
 function getErrorTypeColor(type) {
   switch (type) {
-    case 'Conceptual Gap':   return 'rgb(244, 63, 94)'; // Physics Red
-    case 'Silly Mistake':    return 'rgb(59, 130, 246)'; // Chem Blue
-    case 'Calculation Error':return 'rgb(139, 92, 246)'; // Maths Purple
-    case 'Others':           return 'rgb(107, 107, 107)'; // Muted Gray
+    case 'Conceptual Gap':   return 'rgb(244, 63, 94)';
+    case 'Silly Mistake':    return 'rgb(59, 130, 246)';
+    case 'Calculation Error':return 'rgb(139, 92, 246)';
+    case 'Others':           return 'rgb(107, 107, 107)';
     default: return 'var(--muted)';
   }
 }
@@ -2483,6 +2474,8 @@ function initTaskset() {
 
 initTaskset();
 
+
+
 // GLOBAL SEARCH (inspired by fuzzel!)
 
 (function injectGlobalSearchCSS() {
@@ -2672,8 +2665,6 @@ const GlobalSearch = {
     this.currentResults = [];
     this.renderResults();
     
-    // Wait for the next paint cycle, then wait 20ms to ensure CSS transition has started
-    // This forces the browser to acknowledge the input is no longer visibility:hidden
     requestAnimationFrame(() => {
       setTimeout(() => {
         this.input.focus({ preventScroll: true });
@@ -2978,7 +2969,7 @@ window.addEventListener('storage', (e) => {
 });
 
 
-// [IMPROVEMENT] CROSS-TAB SYNCHRONIZATION
+// CROSS-TAB SYNCHRONIZATION
 window.addEventListener('storage', (e) => {
   // Only react to changes on our primary storage key (ignore _tmp backup operations)
   if (e.key !== STORAGE_KEY) return;
@@ -2987,7 +2978,6 @@ window.addEventListener('storage', (e) => {
   Storage._cache = null;
   Storage._invalidateSessionsCache();
 
-  // Reload latest data
   Storage.read();
 
   // Restore active session if it was updated in another tab.
@@ -3020,15 +3010,13 @@ window.addEventListener('storage', (e) => {
 });
 
 
-// [IMPROVEMENT] SAVE BEFORE CLOSING
+// SAVE BEFORE CLOSING
 function flushBeforeClose() {
   // Flush any pending debounced note save immediately
   if (typeof saveNotesDebounced.flush === 'function') {
     saveNotesDebounced.flush();
   }
 
-  // Extra safety: directly save notes if content differs from what's stored
-  // (covers edge cases where the debounce timer wasn't running but input changed)
   if (DOM.notesInput && DOM.notesInput.value !== Storage.getNotes()) {
     Storage.setNotes(DOM.notesInput.value);
   }
