@@ -61,6 +61,9 @@ body {
   color: var(--fg);
   min-height: 100vh;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+  -webkit-font-smoothing: antialiased; 
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body::before {
@@ -2490,5 +2493,13 @@ body.zen-mode .clock-hint {
   #errorLogList, #sessionLog, #testHistoryList {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
