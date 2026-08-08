@@ -1582,6 +1582,37 @@ function initErrorFilters() {
     { key: 'Others', name: 'Others' }
   ];
 
+  // MISSING EVENT LISTENER: Enable adding errors to the log
+  if (DOM.addErrorForm) {
+    DOM.addErrorForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const subject = DOM.errorSubjectSelect.value;
+      const chapter = DOM.errorChapterInput.value.trim();
+      const errorType = DOM.errorTypeSelect.value;
+      const takeaway = DOM.errorTakeawayInput.value.trim();
+    
+      if (!chapter) {
+        showToast('Please enter a chapter or topic', 'error');
+        return;
+      }
+    
+      Storage.addError({
+        id: generateId(),
+        date: new Date().toISOString(),
+        subject,
+        chapter,
+        errorType,
+        takeaway
+      });
+    
+      showToast('Error logged successfully', 'success');
+      DOM.addErrorForm.reset();
+      if (DOM.errorSubjectSelect) DOM.errorSubjectSelect.value = 'physics';
+      renderErrorLog();
+    });
+  }
+
   DOM.errorSubjectFilters.innerHTML = subjectFilters.map(f => 
     `<button class="filter-tab ${f.key === 'all' ? 'active' : ''}" data-filter="${f.key}">${f.name}</button>`
   ).join('');

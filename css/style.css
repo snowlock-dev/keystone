@@ -36,6 +36,21 @@
   scrollbar-width: thin;
 }
 
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg); 
+}
+::-webkit-scrollbar-thumb {
+  background: #3c3c3c; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4c4c4c; 
+}
+
 ::selection {
   background: var(--accent-glow);
 }
@@ -105,6 +120,12 @@ button:disabled {
   padding: 0 0.3rem 1.25rem;
   border-bottom: 2px solid var(--border);
   margin-bottom: 0.75rem;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .brand {
