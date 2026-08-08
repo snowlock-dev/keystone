@@ -1338,16 +1338,46 @@ button:disabled {
 
 .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
-.chart-svg { width: 100%; height: auto;}
 
-#barChart, #testLineChart {
-  min-width: 600px; 
+.chart-container {
+  height: 260px;
+  overflow: hidden;
 }
 
-.chart-axis-label {
-  font-size: 10px;
-  fill: var(--muted);
-  font-family: 'Space Grotesk', sans-serif;
+.pie-chart-wrapper {
+  height: auto;
+  overflow: visible;
+}
+
+.pie-canvas-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#pieChart {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Center text overlay for the pie chart */
+.pie-center-text { 
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center; 
+  pointer-events: none;
+  z-index: 1;
+}
+
+#barChart, #testLineChart {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .bar-chart-bar { transition: opacity 0.2s; }
@@ -1357,7 +1387,7 @@ button:disabled {
 .goals-panel {
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* Prevents the streak box from touching the top boxes */
+  gap: 2rem;
 }
 
 .goals-panel .panel-title {
@@ -1428,12 +1458,12 @@ button:disabled {
 
 .goal-progress-text.met { color: var(--success); }
 
-/* Expanded Subject Questions Box */
+
 .subject-questions-box.expanded {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.25rem; /* Tighter gap for less weird empty space */
+  gap: 1.25rem;
   padding: 2rem;
 }
 

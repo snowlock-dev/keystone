@@ -771,6 +771,18 @@ function switchSection(name) {
   DOM.sectionViews.forEach(view =>
     view.classList.toggle('active', view.dataset.section === name)
   );
+
+  // Resize charts after their section becomes visible
+  requestAnimationFrame(() => {
+    try {
+      if (name === 'tracker') {
+        if (chartInstances.pieChart) chartInstances.pieChart.resize();
+        if (chartInstances.barChart) chartInstances.barChart.resize();
+      } else if (name === 'tests') {
+        if (chartInstances.testLineChart) chartInstances.testLineChart.resize();
+      }
+    } catch (e) { console.error("Chart resize error:", e); }
+  });
 }
 
 DOM.navItems.forEach(item => {
@@ -1225,110 +1237,183 @@ function renderStats(dailyTotals, allSessions) {
   DOM.statQuestionStreak.textContent = computeQuestionStreak() + ' days';
 }
 
+
+// --- CHART.JS SETUP --- //
+const chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+    delete chartInstances[id];
+  }
+}
+
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#6b6b6b';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+  Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+}
+
 function renderPieChart(allSessions) {
-  const sessions = allSessions || Storage.allSessions();
-  const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
-  const pieData = {};
-  SUBJECTS.forEach(s => { pieData[s.key] = 0; });
+  try {
+    const sessions = allSessions || Storage.allSessions();
+    const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
+    const pieData = {};
+    SUBJECTS.forEach(s => { pieData[s.key] = 0; });
 
-  for (const s of sessions) {
-    if (new Date(s.end).getTime() >= sevenDaysAgo) {
-      pieData[s.subject] = (pieData[s.subject] || 0) + s.duration;
-    }
-  }
-
-  const total = Object.values(pieData).reduce((a, b) => a + b, 0);
-  DOM.pieTotal.textContent = formatDurationShort(total);
-  DOM.pieChart.innerHTML = '';
-  DOM.pieLegend.innerHTML = '';
-
-  if (total === 0) {
-    const legend = document.createElement('div');
-    legend.className = 'legend-item';
-    legend.style.color = 'var(--muted)';
-    legend.textContent = 'No data yet';
-    DOM.pieLegend.appendChild(legend);
-    return;
-  }
-
-  let startAngle = 0;
-  const R = 80, CX = 100, CY = 100;
-  const toRad = (deg) => (deg - 90) * Math.PI / 180;
-
-  for (const subj of SUBJECTS) {
-    const value = pieData[subj.key];
-    if (value === 0) continue;
-    const pct = value / total;
-
-    if (pct === 1) {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', CX); circle.setAttribute('cy', CY); circle.setAttribute('r', R);
-      circle.setAttribute('fill', subj.color); circle.setAttribute('opacity', '0.9');
-      DOM.pieChart.appendChild(circle);
-    } else {
-      const endAngle = startAngle + pct * 360;
-      const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-
-      const x1 = CX + R * Math.cos(toRad(startAngle));
-      const y1 = CY + R * Math.sin(toRad(startAngle));
-      const x2 = CX + R * Math.cos(toRad(endAngle));
-      const y2 = CY + R * Math.sin(toRad(endAngle));
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`);
-      path.setAttribute('fill', subj.color);
-      path.setAttribute('opacity', '0.9');
-      path.setAttribute('stroke', 'var(--card)');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('stroke-linejoin', 'round');
-      DOM.pieChart.appendChild(path);
-      startAngle = endAngle;
+    for (const s of sessions) {
+      if (new Date(s.end).getTime() >= sevenDaysAgo) {
+        pieData[s.subject] = (pieData[s.subject] || 0) + s.duration;
+      }
     }
 
-    const legend = document.createElement('div');
-    legend.className = 'legend-item';
-    legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${Math.round(pct * 100)}%)`;
-    DOM.pieLegend.appendChild(legend);
+    const total = Object.values(pieData).reduce((a, b) => a + b, 0);
+    DOM.pieTotal.textContent = formatDurationShort(total);
+    DOM.pieLegend.innerHTML = '';
+
+    destroyChart('pieChart');
+
+    if (total === 0) {
+      const legend = document.createElement('div');
+      legend.className = 'legend-item';
+      legend.style.color = 'var(--muted)';
+      legend.textContent = 'No data yet';
+      DOM.pieLegend.appendChild(legend);
+      return;
+    }
+
+    const labels = [];
+    const data = [];
+    const colors = [];
+
+    for (const subj of SUBJECTS) {
+      if (pieData[subj.key] > 0) {
+        labels.push(subj.name);
+        data.push(pieData[subj.key]);
+        colors.push(subj.color);
+
+        const pct = Math.round((pieData[subj.key] / total) * 100);
+        const legend = document.createElement('div');
+        legend.className = 'legend-item';
+        legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${pct}%)`;
+        DOM.pieLegend.appendChild(legend);
+      }
+    }
+
+    if (typeof Chart === 'undefined') return;
+
+    const cardColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--card').trim() || '#111';
+
+    chartInstances.pieChart = new Chart(DOM.pieChart.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderColor: cardColor,
+          borderWidth: 2,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '62%',
+        devicePixelRatio: 4,
+        plugins: {
+          legend: { display: false },
+          layout: {
+            padding: 50 
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${formatDurationShort(ctx.raw)}`
+            }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Pie chart render error:", e);
+    showToast('Pie chart render error', 'error');
   }
 }
 
 function renderBarChart(dailyTotals, allSessions) {
-  const sessions = allSessions || Storage.allSessions();
-  const W = 400, H = 200, PAD = 40;
-  const maxVal = Math.max(3600, ...Object.values(dailyTotals));
-  const maxH   = H - PAD * 2;
-  const stepX  = (W - PAD * 2) / 7;
-  const barW   = stepX * 0.6;
-  const parts = [];
+  try {
+    const sessions = allSessions || Storage.allSessions();
+    destroyChart('barChart');
 
-  parts.push(`<line x1="${PAD}" y1="${PAD}" x2="${W-PAD}" y2="${PAD}" class="chart-grid-line"/>`);
-  parts.push(`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" class="chart-grid-line"/>`);
-  parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${formatDurationShort(maxVal)}</text>`);
-  parts.push(`<text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" class="chart-axis-label">0m</text>`);
+    if (typeof Chart === 'undefined') return;
 
-  for (let i = 6; i >= 0; i--) {
-    const d = startOfDay(new Date());
-    d.setDate(d.getDate() - i);
-    const dayStart = d.getTime();
-    const dayEnd   = dayStart + DAY_MS;
+    const labels = [];
+    const datasets = SUBJECTS.map(s => ({
+      label: s.name,
+      data: [],
+      backgroundColor: s.color,
+      borderColor: s.color,
+      borderColor: 'transparent',
+      borderWidth: 2,
+      borderRadius: 8,
+    }));
 
-    const x = PAD + (6 - i) * stepX + (stepX - barW) / 2;
-    let currentY = H - PAD;
+    for (let i = 6; i >= 0; i--) {
+      const d = startOfDay(new Date());
+      d.setDate(d.getDate() - i);
+      const dayStart = d.getTime();
+      const dayEnd   = dayStart + DAY_MS;
+      labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
 
-    for (const subj of SUBJECTS) {
-      const subjDur = sessions
-        .filter(s => s.subject === subj.key && new Date(s.end).getTime() >= dayStart && new Date(s.end).getTime() <  dayEnd)
-        .reduce((sum, s) => sum + s.duration, 0);
-
-      if (subjDur > 0) {
-        const barH = (subjDur / maxVal) * maxH;
-        currentY -= barH;
-        parts.push(`<rect x="${x}" y="${currentY}" width="${barW}" height="${barH}" fill="${subj.color}" rx="2" class="bar-chart-bar"><title>${subj.name}: ${formatDurationShort(subjDur)}</title></rect>`);
-      }
+      SUBJECTS.forEach((subj, idx) => {
+        const subjDur = sessions
+          .filter(s => s.subject === subj.key
+            && new Date(s.end).getTime() >= dayStart
+            && new Date(s.end).getTime() <  dayEnd)
+          .reduce((sum, s) => sum + s.duration, 0);
+        datasets[idx].data.push(subjDur);
+      });
     }
-    parts.push(`<text x="${x + barW/2}" y="${H - PAD + 15}" text-anchor="middle" class="chart-axis-label">${d.getMonth() + 1}/${d.getDate()}</text>`);
+
+    chartInstances.barChart = new Chart(DOM.barChart.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 4,
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { color: '#6b6b6b', font: { size: 10 } }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: {
+              color: '#6b6b6b',
+              font: { size: 10 },
+              callback: (v) => formatDurationShort(v)
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.dataset.label}: ${formatDurationShort(ctx.raw)}`
+            }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Bar chart render error:", e);
+    showToast('Bar Chart rendering error!', 'error');
   }
-  DOM.barChart.innerHTML = parts.join('');
 }
 
 
@@ -1398,7 +1483,6 @@ function renderDashboard() {
 let errFilterSubject = 'all';
 let errFilterType = 'all';
 
-
 function renderTestDashboard() {
   const tests = Storage.getTests().slice().sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -1413,7 +1497,6 @@ function renderTestDashboard() {
     const last = tests[tests.length - 1];
     const last3 = tests.slice(-3);
     
-    // Calculate average obtained and total marks instead of percentage
     const avgObtained = last3.reduce((sum, t) => sum + t.obtainedMarks, 0) / last3.length;
     const avgTotal = last3.reduce((sum, t) => sum + t.totalMarks, 0) / last3.length;
     const avgAcc = last3.reduce((sum, t) => sum + t.accuracy, 0) / last3.length;
@@ -1470,61 +1553,98 @@ function renderTestDashboard() {
 }
 
 function renderTestLineChart(tests) {
-  const W = 400, H = 200, PAD = 40;
-  const maxMarks = Math.max(...tests.map(t => t.totalMarks), 100);
-  const parts = [];
+  try {
+    destroyChart('testLineChart');
 
-  parts.push(`<line x1="${PAD}" y1="${PAD}" x2="${W-PAD}" y2="${PAD}" class="chart-grid-line"/>`);
-  parts.push(`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" class="chart-grid-line"/>`);
-  parts.push(`<text x="${PAD-5}" y="${PAD+4}" text-anchor="end" class="chart-axis-label">${maxMarks}</text>`);
-  parts.push(`<text x="${PAD-5}" y="${H-PAD+4}" text-anchor="end" class="chart-axis-label">0</text>`);
+    if (typeof Chart === 'undefined') return;
 
-  if (tests.length === 0) {
-    DOM.testLineChart.innerHTML = parts.join('') + `<text x="${W/2}" y="${H/2}" text-anchor="middle" class="chart-axis-label" style="font-size: 12px;">No test data to plot</text>`;
-    return;
-  }
+    const ctx = DOM.testLineChart.getContext('2d');
+    const accentColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--accent').trim() || '#d4864c';
 
-  if (tests.length === 1) {
-    const x = W / 2;
-    const y = H - PAD - (tests[0].obtainedMarks / maxMarks) * (H - PAD * 2);
-    parts.push(`<circle cx="${x}" cy="${y}" r="4" fill="var(--accent)"/>`);
-    DOM.testLineChart.innerHTML = parts.join('');
-    return;
-  }
-
-  const stepX = (W - PAD * 2) / (tests.length - 1);
-  const points = tests.map((t, i) => {
-    const x = PAD + i * stepX;
-    const y = H - PAD - (t.obtainedMarks / maxMarks) * (H - PAD * 2);
-    return { x, y, val: t.obtainedMarks };
-  });
-
-  let pathD = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] || points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] || p2;
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-  }
-
-  parts.push(`<path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
-  const areaD = `${pathD} L ${points[points.length-1].x} ${H-PAD} L ${points[0].x} ${H-PAD} Z`;
-  parts.push(`<path d="${areaD}" fill="var(--accent)" opacity="0.1"/>`);
-
-  points.forEach(p => {
-    parts.push(`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--accent)"/>`);
-    if (tests.length <= 8) {
-      parts.push(`<text x="${p.x}" y="${p.y - 10}" text-anchor="middle" class="chart-axis-label" style="fill: var(--fg);">${p.val}</text>`);
+    if (tests.length === 0) {
+      chartInstances.testLineChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [] }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b6b' } },
+            y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b6b' } }
+          },
+          plugins: { legend: { display: false } }
+        },
+        plugins: [{
+          id: 'emptyMessage',
+          afterDraw: (chart) => {
+            const { ctx: c, width, height } = chart;
+            c.save();
+            c.font = '12px "Space Grotesk"';
+            c.fillStyle = '#6b6b6b';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('No test data to plot', width / 2, height / 2);
+            c.restore();
+          }
+        }]
+      });
+      return;
     }
-  });
 
-  DOM.testLineChart.innerHTML = parts.join('');
+    const maxMarks = Math.max(...tests.map(t => t.totalMarks), 100);
+    const labels = tests.map(t => new Date(t.date).toLocaleDateString());
+    const data = tests.map(t => t.obtainedMarks);
+
+    chartInstances.testLineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Obtained Marks',
+          data,
+          borderColor: accentColor,
+          backgroundColor: accentColor + '1a',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          pointBackgroundColor: accentColor,
+          pointBorderColor: accentColor,
+          hitRadius: 32,
+          borderWidth: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        devicePixelRatio: 3,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b6b', font: { size: 10 } } },
+          y: {
+            beginAtZero: true,
+            max: maxMarks,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#6b6b6b', font: { size: 10 } }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => tests[items[0].dataIndex].name,
+              label: (ctx) => ` Score: ${ctx.raw} / ${tests[ctx.dataIndex].totalMarks} (${tests[ctx.dataIndex].accuracy}%)`
+            }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Test line chart render error:", e);
+    showToast('Error rendering Test Line Chart', 'error');
+  }
 }
+
 
 
 // Set default date to today on load
