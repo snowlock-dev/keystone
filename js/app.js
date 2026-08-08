@@ -1449,8 +1449,8 @@ function renderTestDashboard() {
       </button>
       <div class="test-content">
         <div class="test-tags">
-            <span class="test-tag" style="color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
-            <span class="test-tag" style="color: var(--accent)">${t.accuracy}% Acc</span>
+            <span class="test-tag" style="background: rgba(92, 155, 212, 0.15);color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
+            <span class="test-tag" style="background: rgba(212, 134, 76, 0.15);color: var(--accent)">${t.accuracy}% Acc</span>
         </div>
         <div class="test-name">${escapeHtml(t.name)}</div>
         <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
