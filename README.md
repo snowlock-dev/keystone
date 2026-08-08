@@ -42,7 +42,7 @@ questions, along with your average session durations so you know how
 you're doing.
 
 - *Visual Analytics:* There are interactive 7-day bar charts segmented 
-by subject, plus a pie chart to see exactly where your focus is actually going.
+by subject, plus a pie chart to see exactly where your focus is actually going. MADE USING CHART.JS
 
 - *Goal Tracking:* You can set daily goals for hours studied and questions solved.
 
@@ -149,7 +149,7 @@ you start getting close to that 5MB limit.
 
 ### Stretch Goals (for v2.0)
 
-- [ ] Replace custom SVG graphs with `chart.js`
+- [x] Replace custom SVG graphs with `chart.js`
 - [ ] Add markdown for Quick Notes Section
 - [ ] (Maybe) Move over to IndexedDB
 
