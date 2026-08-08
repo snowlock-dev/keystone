@@ -245,7 +245,8 @@ const Storage = {
 
       // Validate the entire draft before committing
       if (!validateData(draft)) {
-        console.error("Keystone: transaction validation failed — keeping original state");
+        console.error("Keystone: transaction validation failed; keeping original state");
+        showToast('Failed to save data. Please try again.', 'error');
         return false;
       }
 
@@ -263,7 +264,8 @@ const Storage = {
       this._invalidateSessionsCache();
       return result !== undefined ? result : true;
     } catch (err) {
-      console.error("Keystone: transaction failed — keeping original state", err);
+      console.error("Keystone: transaction failed; keeping original state", err);
+      showToast('Storage full! Please export and clear old data.', 'error');
       this._cache = current;
       return false;
     }
@@ -1203,7 +1205,7 @@ function computeQuestionStreak() {
 }
 
 
-// -- DASHBOARD — RENDERING -- //
+// -- DASHBOARD : RENDERING -- //
 // Pass cached allSessions to every render function to avoid repeated reads
 
 function renderStats(dailyTotals, allSessions) {
