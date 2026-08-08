@@ -295,7 +295,7 @@
             <div class="tracker-panel">
               <h2 class="panel-title">Last 7 Days Breakdown</h2>
               <div class="chart-container pie-chart-wrapper">
-                <canvas id="pieChart"></canvas>
+                <svg id="pieChart" class="chart-svg" viewBox="0 0 200 200" style="max-width: 180px;"></svg>
                 <div class="pie-center-text">
                   <div class="pie-center-value" id="pieTotal">0h</div>
                 </div>
@@ -307,7 +307,7 @@
             <div class="tracker-panel">
               <h2 class="panel-title">Daily Time (Stacked)</h2>
               <div class="chart-container">
-                <canvas id="barChart"></canvas>
+                <svg id="barChart" class="chart-svg" viewBox="0 0 400 200" preserveAspectRatio="none"></svg>
               </div>
             </div>
           </div>
@@ -443,7 +443,7 @@
           <div class="tracker-panel">
             <div class="panel-title">Performance Trajectory</div>
             <div class="chart-container">
-              <canvas id="testLineChart"></canvas>
+              <svg id="testLineChart" class="chart-svg" viewBox="0 0 400 200"></svg>
             </div>
           </div>
 
@@ -571,7 +571,6 @@
   </div>
 
   <script src="assets/marked.min.js" defer></script>
-  <script src="assets/chart.min.js" defer></script>
   <script src="js/app.js" defer></script>
 </body>
 </html>
