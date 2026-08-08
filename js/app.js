@@ -728,7 +728,13 @@ const DOM = {
   errorTypeSelect:   $('errorTypeSelect'),
   errorTakeawayInput:$('errorTakeawayInput'),
   errorSubjectFilters: $('errorSubjectFilters'),
-  errorTypeFilters:    $('errorTypeFilters')
+  errorTypeFilters:    $('errorTypeFilters'),
+
+  // Global Search
+  gsOverlay:           $('gsOverlay'),
+  gsInput:             $('gsInput'),
+  gsResults:           $('gsResults'),
+  gsModeBadge:         $('gsModeBadge')
 };
 
 
@@ -2524,38 +2530,11 @@ const GlobalSearch = {
   currentResults: [],
 
   init() {
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'gs-overlay';
-    this.overlay.innerHTML = `
-      <div class="gs-modal" role="dialog" aria-label="Global Search">
-        <div class="gs-input-wrap">
-          <i class="ph ph-magnifying-glass gs-search-icon"></i>
-          <input type="text" class="gs-input" id="gsInput"
-                 placeholder="Search tasks & errors…  ( !t tasks · !e errors )"
-                 autocomplete="off" spellcheck="false" />
-          <span class="gs-mode-badge" id="gsModeBadge"></span>
-        </div>
-        <div class="gs-results" id="gsResults"></div>
-        <div class="gs-footer">
-          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> open</span>
-          <span><kbd>esc</kbd> close</span>
-          <div class="gs-footer-spacer"></div>
-          <span class="gs-hint">!t tasks</span>
-          <span class="gs-hint">!e errors</span>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(this.overlay);
-
-    this.input     = this.overlay.querySelector('#gsInput');
-    this.results   = this.overlay.querySelector('#gsResults');
-    this.modeBadge = this.overlay.querySelector('#gsModeBadge');
-
-    this.input.addEventListener('input', () => this.handleInput());
-    this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
-    this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) this.close();
+    // Bind events to the elements from the central DOM object
+    DOM.gsInput.addEventListener('input', () => this.handleInput());
+    DOM.gsInput.addEventListener('keydown', (e) => this.handleKeydown(e));
+    DOM.gsOverlay.addEventListener('click', (e) => {
+      if (e.target === DOM.gsOverlay) this.close();
     });
   },
 
@@ -2566,15 +2545,15 @@ const GlobalSearch = {
       DOM.sessionModal.classList.remove('active');
     }
     this.isOpen = true;
-    this.overlay.classList.add('active');
-    this.input.value = '';
+    DOM.gsOverlay.classList.add('active');
+    DOM.gsInput.value = '';
     this.selectedIndex = 0;
     this.currentResults = [];
     this.renderResults();
     
     requestAnimationFrame(() => {
       setTimeout(() => {
-        this.input.focus({ preventScroll: true });
+        DOM.gsInput.focus({ preventScroll: true });
       }, 20);
     });
   },
@@ -2582,8 +2561,8 @@ const GlobalSearch = {
   close() {
     if (!this.isOpen) return;
     this.isOpen = false;
-    this.overlay.classList.remove('active');
-    this.input.blur();
+    DOM.gsOverlay.classList.remove('active');
+    DOM.gsInput.blur();
   },
 
   toggle() {
@@ -2615,7 +2594,7 @@ const GlobalSearch = {
   },
 
   handleInput() {
-    const raw = this.input.value.trim();
+    const raw = DOM.gsInput.value.trim();
     const query = raw.toLowerCase();
 
     // Parse bangs: !t --> tasks only, !e --> errors only
@@ -2629,17 +2608,17 @@ const GlobalSearch = {
     }
 
     // Update mode badge
-    this.modeBadge.classList.remove('active');
+    DOM.gsModeBadge.classList.remove('active');
     if (mode === 'tasks') {
-      this.modeBadge.textContent = 'Tasks';
-      this.modeBadge.style.background = 'rgba(139,92,246,.15)';
-      this.modeBadge.style.color = 'rgb(139,92,246)';
-      this.modeBadge.classList.add('active');
+      DOM.gsModeBadge.textContent = 'Tasks';
+      DOM.gsModeBadge.style.background = 'rgba(139,92,246,.15)';
+      DOM.gsModeBadge.style.color = 'rgb(139,92,246)';
+      DOM.gsModeBadge.classList.add('active');
     } else if (mode === 'errors') {
-      this.modeBadge.textContent = 'Errors';
-      this.modeBadge.style.background = 'rgba(244,63,94,.15)';
-      this.modeBadge.style.color = 'rgb(244,63,94)';
-      this.modeBadge.classList.add('active');
+      DOM.gsModeBadge.textContent = 'Errors';
+      DOM.gsModeBadge.style.background = 'rgba(244,63,94,.15)';
+      DOM.gsModeBadge.style.color = 'rgb(244,63,94)';
+      DOM.gsModeBadge.classList.add('active');
     }
 
     const needle = searchText.toLowerCase();
@@ -2739,12 +2718,12 @@ const GlobalSearch = {
   },
 
   renderResults() {
-    this.results.innerHTML = '';
+    DOM.gsResults.innerHTML = '';
 
     if (this.currentResults.length === 0) {
-      const query = this.input.value.trim();
+      const query = DOM.gsInput.value.trim();
       if (!query) {
-        this.results.innerHTML = `
+        DOM.gsResults.innerHTML = `
           <div class="gs-empty">
             <i class="ph ph-magnifying-glass"></i>
             <p>Search across all your tasks and error logs</p>
@@ -2754,7 +2733,7 @@ const GlobalSearch = {
             </div>
           </div>`;
       } else {
-        this.results.innerHTML = `
+        DOM.gsResults.innerHTML = `
           <div class="gs-empty">
             <i class="ph ph-binocular"></i>
             <p>No results for "${escapeHtml(query)}"</p>
@@ -2792,7 +2771,7 @@ const GlobalSearch = {
         this.selectedIndex = parseInt(item.dataset.index);
         this.updateSelectionVisual();
       });
-      this.results.appendChild(item);
+      DOM.gsResults.appendChild(item);
       globalIndex++;
     };
 
@@ -2800,7 +2779,7 @@ const GlobalSearch = {
       const hdr = document.createElement('div');
       hdr.className = 'gs-section-header';
       hdr.textContent = 'Tasks · ' + tasks.length;
-      this.results.appendChild(hdr);
+      DOM.gsResults.appendChild(hdr);
     }
     tasks.forEach(renderItem);
 
@@ -2808,7 +2787,7 @@ const GlobalSearch = {
       const hdr = document.createElement('div');
       hdr.className = 'gs-section-header';
       hdr.textContent = 'Errors · ' + errors.length;
-      this.results.appendChild(hdr);
+      DOM.gsResults.appendChild(hdr);
     }
     errors.forEach(renderItem);
 
@@ -2816,7 +2795,7 @@ const GlobalSearch = {
   },
 
   updateSelectionVisual() {
-    const items = this.results.querySelectorAll('.gs-item');
+    const items = DOM.gsResults.querySelectorAll('.gs-item');
     items.forEach((item, i) => {
       item.classList.toggle('selected', i === this.selectedIndex);
     });

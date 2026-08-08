@@ -548,6 +548,28 @@
     </main>
   </div>
 
+  <!-- Global Search Modal -->
+  <div class="gs-overlay" id="gsOverlay">
+    <div class="gs-modal" role="dialog" aria-label="Global Search">
+      <div class="gs-input-wrap">
+        <i class="ph ph-magnifying-glass gs-search-icon"></i>
+        <input type="text" class="gs-input" id="gsInput"
+               placeholder="Search tasks & errors…  ( !t tasks · !e errors )"
+               autocomplete="off" spellcheck="false" />
+        <span class="gs-mode-badge" id="gsModeBadge"></span>
+      </div>
+      <div class="gs-results" id="gsResults"></div>
+      <div class="gs-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> open</span>
+        <span><kbd>esc</kbd> close</span>
+        <div class="gs-footer-spacer"></div>
+        <span class="gs-hint">!t tasks</span>
+        <span class="gs-hint">!e errors</span>
+      </div>
+    </div>
+  </div>
+
   <script src="assets/marked.min.js" defer></script>
   <script src="js/app.js" defer></script>
 </body>
