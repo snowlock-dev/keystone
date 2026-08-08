@@ -1433,15 +1433,19 @@ function renderTestDashboard() {
   }
   [...tests].reverse().forEach(t => {
     const item = document.createElement('div');
-    item.className = 'log-item';
+    item.className = 'test-card'; 
     item.innerHTML = `
-      <div class="log-item-info">
-        <div class="log-item-subject">${escapeHtml(t.name)}</div>
-        <div class="log-item-desc">${new Date(t.date).toLocaleDateString()}</div>
+      <button class="test-delete-btn" data-id="${t.id}" aria-label="Delete test">
+        <i class="ph ph-x"></i>
+      </button>
+      <div class="test-content">
+        <div class="test-tags">
+            <span class="test-tag" style="color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
+            <span class="test-tag" style="color: var(--accent)">${t.accuracy}% Acc</span>
+        </div>
+        <div class="test-name">${escapeHtml(t.name)}</div>
+        <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
       </div>
-      <div class="log-item-duration" style="color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</div>
-      <div class="log-item-duration" style="color: var(--accent)">${t.accuracy}% Acc</div>
-      <button class="log-item-delete" data-id="${t.id}"><i class="ph ph-x"></i></button>
     `;
     DOM.testHistoryList.appendChild(item);
   });
