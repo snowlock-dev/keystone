@@ -19,6 +19,17 @@ tracking, notes, and analytics into one unified website.
 > since I needed them in a hurry, and because I built this for myself.
 > That said, I went through and checked almost all the code myself, 
 > and fixed all the annoying bugs (security or otherwise) I could find.
+>
+> Also, the demo.json was extended using Gemini
+
+
+## Usage
+
+1. Go to the website: [keystone-snowlock.web.app](https://keystone-snowlock.web.app/)
+2. Try it out!
+
+(if you want to see how it would look with some data, download and load the demo json: 
+[assets/demo.json](https://github.com/snowlock-dev/keystone/blob/main/assets/demo.json))
 
 
 ## Core Features
@@ -126,21 +137,21 @@ you start getting close to that 5MB limit.
 
 ## Roadmap
 
-[x] Build placeholder `index.html`
-[x] Add notes section
-[x] Add a guideplan/taskflow section
-[x] Add a timelog section with charts & graphs
-[x] Add a daily goal section with streaks
-[x] Add a good todo section
-[x] Add a test dashboard
-[x] Add an error dashboard
+- [x] Build placeholder `index.html`
+- [x] Add notes section
+- [x] Add a guideplan/taskflow section
+- [x] Add a timelog section with charts & graphs
+- [x] Add a daily goal section with streaks
+- [x] Add a good todo section
+- [x] Add a test dashboard
+- [x] Add an error dashboard
 
 
 ### Stretch Goals (for v2.0)
 
-[ ] Replace custom SVG graphs with `chart.js`
-[ ] Add markdown for Quick Notes Section
-[ ] (Maybe) Move over to IndexedDB
+- [ ] Replace custom SVG graphs with `chart.js`
+- [ ] Add markdown for Quick Notes Section
+- [ ] (Maybe) Move over to IndexedDB
 
 
 ## Credits

@@ -232,13 +232,13 @@ button:disabled {
 
 .toast.success {
   border-color: var(--success);
-  background: rgba(42, 144, 82, 1);
+  background: rgba(42, 144, 82, 0.5);
   color: #a6e1b6;
 }
 
 .toast.error {
   border-color: var(--danger);
-  background: rgba(112, 42, 42, 1);
+  background: rgba(112, 42, 42, 0.5);
   color: #f1a8a8;
 }
 
