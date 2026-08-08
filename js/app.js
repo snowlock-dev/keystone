@@ -1498,10 +1498,6 @@ function renderTestLineChart(tests) {
   DOM.testLineChart.innerHTML = parts.join('');
 }
 
-// Set default date to today on load
-if (DOM.testDateInput) {
-  DOM.testDateInput.value = new Date().toISOString().split('T')[0];
-}
 
 // Set default date to today on load
 if (DOM.testDateInput) {
@@ -2272,8 +2268,16 @@ function tsUpdateClock() {
   }
 }
 
-setInterval(tsUpdateClock, 1000);
-tsUpdateClock();
+let clockInterval = setInterval(tsUpdateClock, 1000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearInterval(clockInterval);
+  } else {
+    clearInterval(clockInterval); // Clear any existing interval just to be safe.
+    tsUpdateClock();
+    clockInterval = setInterval(tsUpdateClock, 1000);
+  }
+});
 
 // --- Zen Mode ---
 function tsToggleZenMode() {
