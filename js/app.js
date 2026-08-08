@@ -1042,26 +1042,28 @@ function renderSessionLog() {
     const time = new Date(s.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const item = document.createElement('div');
-    item.className = 'log-item';
+    item.className = 'session-card';
     item.innerHTML = `
-      <div class="log-item-icon" style="background:${subj.color}22;color:${subj.color}">
-        <i class="ph-fill ${subj.icon}"></i>
-      </div>
-      <div class="log-item-info">
-        <div class="log-item-subject">${subj.name}</div>
-        <div class="log-item-desc">${s.description || 'Ended at ' + time}</div>
-      </div>
-      <div class="log-item-duration">${formatDurationShort(s.duration)}</div>
-      <button class="log-item-delete" data-id="${s.id}" aria-label="Delete session">
+      <button class="session-delete-btn" data-id="${s.id}" aria-label="Delete session">
         <i class="ph ph-x"></i>
       </button>
+      <div class="session-content">
+        <div class="session-tags">
+            <span class="session-tag" style="background:${subj.color}22;color:${subj.color}">
+              <i class="ph-fill ${subj.icon}"></i> ${subj.name}
+            </span>
+        </div>
+        <div class="session-desc">${s.description || 'Ended at ' + time}</div>
+        <div class="session-time">Logged today</div>
+        <div class="session-duration">${formatDurationShort(s.duration)}</div>
+      </div>
     `;
     DOM.sessionLog.appendChild(item);
   }
 }
 
 DOM.sessionLog.addEventListener('click', (e) => {
-  const btn = e.target.closest('.log-item-delete');
+  const btn = e.target.closest('.session-delete-btn');
   if (!btn) return;
   Storage.removeSession(btn.dataset.id);
   renderAll();
@@ -1558,7 +1560,7 @@ if (DOM.addTestForm) {
 
 if (DOM.testHistoryList) {
   DOM.testHistoryList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.log-item-delete');
+    const btn = e.target.closest('.test-delete-btn');
     if (!btn) return;
     Storage.removeTest(btn.dataset.id);
     showToast('Test removed', 'neutral');
