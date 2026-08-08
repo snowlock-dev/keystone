@@ -868,7 +868,10 @@ let notesClearConfirm = false;
 let notesClearTimer   = null;
 
 function handleNotesClear() {
-  if (!DOM.notesInput.value.trim()) return;
+  if (!DOM.notesInput.value.trim()) {
+    showToast('Notes are already empty', 'neutral');
+    return;
+  }
 
   if (!notesClearConfirm) {
     notesClearConfirm = true;

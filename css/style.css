@@ -609,7 +609,7 @@ button:disabled {
 }
 
 .add-btn {
-  background: linear-gradient(135deg, var(--accent), #B86E3A);
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -626,8 +626,7 @@ button:disabled {
 }
 
 .add-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: scale(1.01);
 }
 
 .add-btn:active {
@@ -950,7 +949,7 @@ button:disabled {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), #E8A85C);
+  background: var(--accent);
   border-radius: 4px;
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
