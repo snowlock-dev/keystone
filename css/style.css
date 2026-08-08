@@ -1112,10 +1112,84 @@ button:disabled {
   border: 2px solid var(--border);
 }
 
+/* --- Notes Markdown Preview Toggling --- */
+.notes-content-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+  overflow: hidden;
+}
+
+.notes-input {
+  width: 100%;
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 2rem 2.5rem; 
+  font-size: 1.1rem; 
+  line-height: 1.8; 
+  color: var(--fg);
+  resize: none;
+  display: none;
+}
+
+.notes-preview {
+  width: 100%;
+  flex: 1;
+  padding: 2rem 2.5rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--fg);
+  overflow-y: auto;
+  cursor: text;
+  white-space: normal;
+  display: block;
+}
+
+.notes-wrapper.editing .notes-input { display: block; }
+.notes-wrapper.editing .notes-preview { display: none; }
+
+/* Reusing markdown-body styling for Notes Preview */
+.notes-preview.markdown-body {
+  color: var(--fg);
+}
+.notes-preview.markdown-body > *:first-child { margin-top: 0; }
+.notes-preview.markdown-body > *:last-child { margin-bottom: 0; }
+.notes-preview.markdown-body p { margin-bottom: 1rem; color: var(--fg); }
+.notes-preview.markdown-body h1, 
+.notes-preview.markdown-body h2, 
+.notes-preview.markdown-body h3, 
+.notes-preview.markdown-body h4 { font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; letter-spacing: -0.02em; color: var(--fg); }
+.notes-preview.markdown-body h1 { font-size: 1.5rem; }
+.notes-preview.markdown-body h2 { font-size: 1.35rem; }
+.notes-preview.markdown-body h3 { font-size: 1.2rem; }
+.notes-preview.markdown-body h4 { font-size: 1.1rem; }
+.notes-preview.markdown-body ul, 
+.notes-preview.markdown-body ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.notes-preview.markdown-body ul { list-style-type: disc; }
+.notes-preview.markdown-body ol { list-style-type: decimal; }
+.notes-preview.markdown-body li { margin-bottom: 0.5rem; color: var(--fg); }
+.notes-preview.markdown-body a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; transition: opacity 0.2s; }
+.notes-preview.markdown-body a:hover { opacity: 0.8; }
+.notes-preview.markdown-body code { background: var(--code-bg); color: var(--code-color); padding: 0.2rem 0.5rem; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.95em; border: 2px solid var(--border); }
+.notes-preview.markdown-body pre { background: var(--code-bg); border: 2px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; overflow-x: auto; }
+.notes-preview.markdown-body pre code { background: transparent; color: var(--code-color); padding: 0; border: none; font-size: 0.95rem; }
+.notes-preview.markdown-body blockquote { border-left: 4px solid var(--accent); padding-left: 1rem; margin: 0 0 1rem 0; color: var(--fg); } /* Changed from #d0d0d0 */
+.notes-preview.markdown-body em, 
+.notes-preview.markdown-body i { font-style: italic; color: var(--fg); } /* Changed from #d0d0d0 */
+.notes-preview.markdown-body strong { font-weight: 700; color: var(--fg); }
+.notes-preview.markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.notes-preview.markdown-body th, 
+.notes-preview.markdown-body td { border: 2px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; color: var(--fg); }
+.notes-preview.markdown-body th { background: var(--surface); font-weight: 600; }
+
 .tracker-panel {
-  border-radius: 20px; /* More rounded */
-  padding: 2.5rem; /* Deep padding */
-  margin-bottom: 2rem; /* Huge gap between cards */
+  border-radius: 20px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .modal-card {

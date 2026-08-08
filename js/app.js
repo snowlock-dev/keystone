@@ -640,6 +640,7 @@ const DOM = {
 
   notesInput:         $('notesInput'),
   notesSaveIndicator: $('notesSaveIndicator'),
+  notesPreview:       $('notesPreview'),
   notesCount:         $('notesCount'),
   notesClearBtn:      $('notesClearBtn'),
 
@@ -878,6 +879,21 @@ function handleNotesChange() {
   updateNotesCount();
 }
 
+// Render markdown into the preview div
+function renderNotesMarkdown() {
+  const text = DOM.notesInput.value;
+  if (typeof marked !== 'undefined') {
+    try {
+      DOM.notesPreview.innerHTML = marked.parse(text);
+    } catch (err) {
+      console.error("Notes markdown parsing failed:", err);
+      DOM.notesPreview.textContent = text;
+    }
+  } else {
+    DOM.notesPreview.textContent = text;
+  }
+}
+
 let notesClearConfirm = false;
 let notesClearTimer   = null;
 
@@ -910,6 +926,7 @@ function handleNotesClear() {
   DOM.notesSaveIndicator.textContent = 'All changes saved';
   DOM.notesSaveIndicator.classList.remove('saving');
   updateNotesCount();
+  renderNotesMarkdown();
   showToast('Notes cleared', 'success');
 }
 
@@ -917,9 +934,29 @@ DOM.notesInput.value = Storage.getNotes();
 DOM.notesSaveIndicator.textContent = 'All changes saved';
 DOM.notesSaveIndicator.classList.remove('saving');
 updateNotesCount();
+renderNotesMarkdown();
 
 DOM.notesInput.addEventListener('input', handleNotesChange);
 DOM.notesClearBtn.addEventListener('click', handleNotesClear);
+
+const notesWrapper = document.querySelector('.notes-wrapper');
+
+DOM.notesInput.addEventListener('focus', () => {
+  notesWrapper.classList.add('editing');
+});
+
+DOM.notesInput.addEventListener('blur', () => {
+  notesWrapper.classList.remove('editing');
+  renderNotesMarkdown();
+});
+
+// Clicking the markdown preview should focus the textarea
+DOM.notesPreview.addEventListener('click', () => {
+  notesWrapper.classList.add('editing');
+  requestAnimationFrame(() => {
+    DOM.notesInput.focus();
+  });
+});
 
 DOM.notesInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab') return;
@@ -3025,6 +3062,7 @@ window.addEventListener('storage', (e) => {
     DOM.notesSaveIndicator.textContent = 'All changes saved';
     DOM.notesSaveIndicator.classList.remove('saving');
     updateNotesCount();
+    renderNotesMarkdown();
   }
 
   // Reload todos for both task lists so they reflect cross-tab changes

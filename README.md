@@ -147,11 +147,10 @@ you start getting close to that 5MB limit.
 - [x] Add an error dashboard
 
 
-### Stretch Goals (for v2.0)
+### Stretch Goals
 
 - [x] Replace custom SVG graphs with `chart.js`
-- [ ] Add markdown for Quick Notes Section
-- [ ] (Maybe) Move over to IndexedDB
+- [x] Add markdown for Quick Notes Section
 
 
 ## Credits

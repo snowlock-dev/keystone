@@ -1,11 +1,11 @@
 {
   "app": "Keystone",
   "version": "1",
-  "exportedAt": "2026-08-08T12:00:33.473Z",
+  "exportedAt": "2026-08-08T17:54:31.121Z",
   "data": {
     "version": 1,
     "notes": {
-      "content": "Hello Keystone!\n\nTry writing something here."
+      "content": "# Hello World!\n\nKeystone has `markdown` support for quick notes!\n\n*(p.s, look out for more updates!)*"
     },
     "tracker": {
       "goals": {
