@@ -982,7 +982,9 @@ DOM.startBtn.addEventListener('click', () => {
 });
 
 DOM.endBtn.addEventListener('click', () => {
-  const duration = getActiveElapsedSec();
+  const rawDuration = getActiveElapsedSec();
+  const duration = Math.floor(rawDuration / 60) * 60;
+
   if (duration > 60) {
     const now   = new Date();
     const start = new Date(now.getTime() - duration * 1000);
@@ -995,6 +997,8 @@ DOM.endBtn.addEventListener('click', () => {
       duration
     });
     showToast(`Session logged: ${formatDurationShort(duration)}`, 'success');
+  } else {
+    showToast('Session shorter than 1 minute discarded', 'neutral');
   }
 
   resetActiveTracker();
