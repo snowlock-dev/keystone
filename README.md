@@ -25,12 +25,22 @@ tracking, notes, and analytics into one unified website.
 
 ## Usage
 
+### Live
+
 1. Go to the website: [keystone-snowlock.web.app](https://keystone-snowlock.web.app/)
 2. Try it out!
 
 (if you want to see how it would look with some data, download and load the demo json: 
 [assets/demo.json](https://github.com/snowlock-dev/keystone/blob/main/assets/demo.json))
 
+
+### Local
+
+1. Clone the repo.
+2. Start a live server: I prefer python: `python -m http.server 8000`
+3. Visit *http://localhost:8000* on your browser of choice!
+
+All dependencies are included natively in the project!
 
 ## Core Features
 
