@@ -2339,6 +2339,8 @@ body.zen-mode .clock-hint {
   .calendar-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .calendar-day { aspect-ratio: 1.5; }
 }
 
 @media (max-width: 1024px) {
@@ -2353,6 +2355,8 @@ body.zen-mode .clock-hint {
   .calendar-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .calendar-day { aspect-ratio: 1.5; }
 
   .goals-grid {
     grid-template-columns: repeat(2, 1fr);
