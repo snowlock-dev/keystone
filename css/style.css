@@ -1254,8 +1254,8 @@ button:disabled {
 .form-select:focus, .form-input:focus { border-color: var(--accent); outline: none; }
 
 .active-timer-display {
-  font-size: 5.5rem; /* Massive timer */
-  color: var(--fg);
+  font-size: 5.5rem;
+  color: var(--muted);
   text-align: center;
   letter-spacing: -0.05em;
   margin: 2rem 0; 
@@ -1263,7 +1263,7 @@ button:disabled {
   transition: color 0.3s;
 }
 
-.active-timer-display.running { color: var(--accent); }
+.active-timer-display.running { color: var(--fg); }
 
 .active-timer-display, .stat-row strong, .goal-progress-text, .log-item-duration {
   font-variant-numeric: tabular-nums;
