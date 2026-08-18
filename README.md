@@ -1,5 +1,9 @@
 # keystone
 
+[![Firebase](https://img.shields.io/badge/firebase-%230d1117?style=for-the-badge&logo=firebase&logoColor=%23039BE5&color=%230d1117)](https://firebase.google.com/)
+[![Deployment](https://img.shields.io/website?url=https%3A%2F%2Fkeystone-snowlock.web.app&style=for-the-badge&logo=firebase&logoColor=white&label=Deployment&labelColor=%230d1117&up_message=Online&up_color=%23238636&down_message=Offline&down_color=%23da3633)](https://keystone-snowlock.web.app)
+
+
 ![image](assets/image.png)
 
 Keystone is my attempt at a private, local-first workspace website.
