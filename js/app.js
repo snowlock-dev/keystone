@@ -74,6 +74,13 @@ function startOfDay(date) {
   return d;
 }
 
+function getStartOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 (Sun) to 6 (Sat)
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  return startOfDay(new Date(d.setDate(diff)));
+}
+
 function formatTime(sec) {
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
@@ -708,6 +715,9 @@ const DOM = {
   pieTotal:  $('pieTotal'),
   pieLegend: $('pieLegend'),
   barChart:  $('barChart'),
+  barPrev:      $('barPrev'),
+  barNext:      $('barNext'),
+  barWeekRange: $('barWeekRange'),
 
   goalHours:         $('goalHours'),
   goalMinutes:       $('goalMinutes'),
@@ -853,6 +863,15 @@ function renderCalendar() {
 DOM.calPrev.addEventListener('click', () => navigateCalendar(-1));
 DOM.calNext.addEventListener('click', () => navigateCalendar(1));
 renderCalendar();
+
+DOM.barPrev.addEventListener('click', () => {
+  barWeekOffset--;
+  renderBarChart();
+});
+DOM.barNext.addEventListener('click', () => {
+  barWeekOffset++;
+  renderBarChart();
+});
 
 
 // -- NOTES -- //
@@ -1378,6 +1397,8 @@ function renderPieChart(allSessions) {
   }
 }
 
+let barWeekOffset = 0;
+
 function renderBarChart(dailyTotals, allSessions) {
   try {
     const sessions = allSessions || Storage.allSessions();
@@ -1385,23 +1406,34 @@ function renderBarChart(dailyTotals, allSessions) {
 
     if (typeof Chart === 'undefined') return;
 
+    // Calculate Monday of the selected week
+    const today = new Date();
+    const startOfWeek = getStartOfWeek(today);
+    startOfWeek.setDate(startOfWeek.getDate() + (barWeekOffset * 7));
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+    // Update range label
+    const formatDate = (d) => `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+    DOM.barWeekRange.textContent = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
+
     const labels = [];
     const datasets = SUBJECTS.map(s => ({
       label: s.name,
       data: [],
       backgroundColor: s.color,
-      borderColor: s.color,
       borderColor: 'transparent',
       borderWidth: 2,
       borderRadius: 8,
     }));
 
-    for (let i = 6; i >= 0; i--) {
-      const d = startOfDay(new Date());
-      d.setDate(d.getDate() - i);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek);
+      d.setDate(d.getDate() + i);
       const dayStart = d.getTime();
       const dayEnd   = dayStart + DAY_MS;
-      labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+      labels.push(DAY_NAMES_SHORT[d.getDay()]);
 
       SUBJECTS.forEach((subj, idx) => {
         const subjDur = sessions
@@ -1433,7 +1465,12 @@ function renderBarChart(dailyTotals, allSessions) {
             ticks: {
               color: '#6b6b6b',
               font: { size: 10 },
-              callback: (v) => formatDurationShort(v)
+              stepSize: 1800, // 30 minutes in seconds
+              callback: (v) => {
+                const hours = v / 3600;
+                if (hours === 0) return '0h';
+                return `${Number(hours.toFixed(1))}h`;
+              }
             }
           }
         },
@@ -1512,7 +1549,7 @@ function renderDashboard() {
   const dailyTotals = computeDailyTotals(7, allSessions);
   renderStats(dailyTotals, allSessions);
   renderPieChart(allSessions);
-  renderBarChart(dailyTotals, allSessions);
+  renderBarChart(null, allSessions);
   renderGoals(allSessions);
 }
 

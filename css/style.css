@@ -1457,6 +1457,27 @@ button:disabled {
 .bar-chart-bar { transition: opacity 0.2s; }
 .bar-chart-bar:hover { opacity: 0.8; }
 
+.chart-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.chart-nav-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fg);
+  min-width: 140px;
+  text-align: center;
+}
+
+.chart-nav .nav-arrow {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
 /* --- Daily Goals & Questions --- */
 .goals-panel {
   display: flex;

@@ -307,7 +307,14 @@
             
             <!-- CARD 3b: Graphs (Bar) -->
             <div class="tracker-panel">
-              <h2 class="panel-title">Daily Time (Stacked)</h2>
+              <div class="panel-header-row">
+                <h2 class="panel-title">Weekly Time (Stacked)</h2>
+                <div class="chart-nav">
+                  <button class="nav-arrow" id="barPrev" aria-label="Previous week"><i class="ph ph-caret-left"></i></button>
+                  <span class="chart-nav-label" id="barWeekRange">Loading...</span>
+                  <button class="nav-arrow" id="barNext" aria-label="Next week"><i class="ph ph-caret-right"></i></button>
+                </div>
+              </div>
               <div class="chart-container">
                 <canvas id="barChart"></canvas>
               </div>
