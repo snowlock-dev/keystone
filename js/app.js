@@ -701,6 +701,8 @@ const DOM = {
   sessionModal:    $('sessionModal'),
   modalSubject:    $('modalSubject'),
   modalDuration:   $('modalDuration'),
+  modalEndTime:    $('modalEndTime'),
+  modalYesterday:  $('modalYesterday'),
   modalDesc:       $('modalDesc'),
   discardModalBtn: $('discardModalBtn'),
   saveModalBtn:    $('saveModalBtn'),
@@ -1150,9 +1152,11 @@ DOM.sessionLog.addEventListener('click', (e) => {
 
 // -- TRACKER: MANUAL SESSION MODAL -- //
 DOM.openModalBtn.addEventListener('click', () => {
-  DOM.modalSubject.value  = 'physics';
-  DOM.modalDuration.value = 30;
-  DOM.modalDesc.value     = '';
+  DOM.modalSubject.value   = 'physics';
+  DOM.modalDuration.value  = 30;
+  DOM.modalEndTime.value   = '';
+  DOM.modalYesterday.checked = false;
+  DOM.modalDesc.value      = '';
   DOM.sessionModal.classList.add('active');
 });
 
@@ -1165,6 +1169,8 @@ DOM.saveModalBtn.addEventListener('click', () => {
   const subject     = DOM.modalSubject.value;
   const durationMin = parseInt(DOM.modalDuration.value, 10);
   const desc        = DOM.modalDesc.value.trim();
+  const endTimeStr  = DOM.modalEndTime.value;
+  const isYesterday = DOM.modalYesterday.checked;
 
   if (isNaN(durationMin) || durationMin <= 0) {
     showToast('Please enter a valid duration', 'error');
@@ -1172,21 +1178,34 @@ DOM.saveModalBtn.addEventListener('click', () => {
   }
 
   const durationSec = durationMin * 60;
-  const now   = new Date();
-  const start = new Date(now.getTime() - durationSec * 1000);
+  const end = new Date();
+  
+  if (isYesterday) {
+    end.setDate(end.getDate() - 1);
+  }
+
+  if (endTimeStr) {
+    const [h, m] = endTimeStr.split(':').map(Number);
+    // Robustness check for invalid time strings
+    if (!isNaN(h) && !isNaN(m)) {
+      end.setHours(h, m, 0, 0);
+    }
+  }
+
+  const start = new Date(end.getTime() - durationSec * 1000);
 
   Storage.addSession({
     id:          generateId(),
     subject,
     description: desc,
     start:       start.toISOString(),
-    end:         now.toISOString(),
+    end:         end.toISOString(),
     duration:    durationSec
   });
 
   DOM.sessionModal.classList.remove('active');
   renderAll();
-  showToast('Manual session added', 'success');
+  showToast(isYesterday ? 'Yesterday\'s session added' : 'Manual session added', 'success');
 });
 
 

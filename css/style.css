@@ -1713,8 +1713,52 @@ button:disabled {
   border: 2px solid var(--fg); 
 }
 
-.form-row { display: flex; gap: 1.5rem; }
+.form-row { display: flex; gap: 1.5rem; align-items: flex-end; }
 .form-row .form-group { min-width: 0; }
+
+.switch-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  height: 52px;
+}
+
+.switch-label:hover {
+  border-color: var(--muted);
+}
+
+.switch-label:has(input:checked) {
+  background: var(--item-active);
+  border-color: var(--accent);
+}
+
+.switch-label input {
+  display: none;
+}
+
+.switch-text {
+  font-size: 1.05rem;
+  color: var(--muted);
+  transition: color 0.2s, font-weight 0.2s;
+}
+
+.switch-label input:checked + .switch-text {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Ensure time input icon is visible and themed */
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
 
 .clock-section {
   margin: 3rem auto 2.5rem;
