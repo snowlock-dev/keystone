@@ -46,6 +46,15 @@ tracking, notes, and analytics into one unified website.
 
 All dependencies are included natively in the project!
 
+## Development & Testing
+
+While the application is pure vanilla JavaScript for the browser, Node.js is used during development to run local verification tests.
+(PS, the tests are only build for the time session logic)
+
+* Verification tests are located in the `tests/` directory.
+* You can run them using: `node tests/test_session_logic.js`
+
+
 ## Core Features
 
 
@@ -66,8 +75,7 @@ by subject, plus a pie chart to see exactly where your focus is actually going. 
 - *Active Timer:* It pauses and resumes easily, but I made sure it 
 survives page reloads and syncs instantly across tabs.
 
-- *Session Logging:* You can do both automatic and manual logging, or a 
-mix of both depending on how you like to work.
+- *Session Logging:* You can do both automatic and manual logging. Manual logging now supports assigning sessions to **yesterday** and specifying a precise **End Time**.
 
 - For the subjects, I currently have it set to: Physics, Chemistry, Maths, 
 and Mock Tests (ie timed exam solving, stuff like that).
