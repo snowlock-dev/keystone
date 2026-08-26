@@ -319,15 +319,15 @@ button:disabled {
 .app-container {
   width: 100%;
   max-width: 1400px;
-  padding: 3rem 3.5rem 4rem; /* More padding around the whole app */
+  padding: 3rem 3.5rem 4rem;
 }
 
 .app-header { 
-  margin-bottom: 3rem; /* Massive space below headers */
+  margin-bottom: 3rem;
   flex-shrink: 0; 
 }
 .app-header h1 { 
-  font-size: 3rem; /* Huge titles */
+  font-size: 3rem;
   font-weight: 700; 
   letter-spacing: -0.04em; 
   line-height: 1.1; 
@@ -706,7 +706,7 @@ button:disabled {
   background: var(--card);
   border: 2px solid var(--border);
   border-radius: 14px; 
-  padding: 1.25rem 1.5rem; /* Much taller todo items */
+  padding: 1.25rem 1.5rem;
   transition: transform 0.2s, border-color 0.25s, opacity 0.3s;
   animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -1179,7 +1179,7 @@ button:disabled {
 .notes-preview.markdown-body pre code { background: transparent; color: var(--code-color); padding: 0; border: none; font-size: 0.95rem; }
 .notes-preview.markdown-body blockquote { border-left: 4px solid var(--accent); padding-left: 1rem; margin: 0 0 1rem 0; color: var(--fg); } /* Changed from #d0d0d0 */
 .notes-preview.markdown-body em, 
-.notes-preview.markdown-body i { font-style: italic; color: var(--fg); } /* Changed from #d0d0d0 */
+.notes-preview.markdown-body i { font-style: italic; color: var(--fg); }
 .notes-preview.markdown-body strong { font-weight: 700; color: var(--fg); }
 .notes-preview.markdown-body table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
 .notes-preview.markdown-body th, 
@@ -1197,6 +1197,7 @@ button:disabled {
   width: 100%;
   max-width: 540px; 
   padding: 2.5rem; 
+  overflow: visible;
 }
 
 .modal-card h3 { 
@@ -1587,7 +1588,6 @@ button:disabled {
   padding: 0.75rem 1rem;
 }
 
-/* Hide number input spinners to keep text perfectly centered */
 .subject-input-row input[type=number]::-webkit-inner-spin-button,
 .subject-input-row input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -1832,6 +1832,107 @@ body.zen-mode #tasksetClockDisplay {
 body.zen-mode .clock-hint {
   display: block !important;
   opacity: 0.5 !important;
+}
+
+/* Custom Dropdown (Popover API) */
+.custom-select-container {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Modal Dropdown override */
+.modal-overlay .select-menu {
+  position: absolute; /* Revert from popover anchoring */
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+}
+
+/* Base Dropdown (Outside Modal) */
+.select-trigger {
+  width: 100%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  color: var(--fg);
+  font-size: 1.05rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+
+#subjectTrigger { anchor-name: --subject-anchor; }
+#errorSubjectTrigger { anchor-name: --error-subject-anchor; }
+#errorTypeTrigger { anchor-name: --error-type-anchor; }
+
+#subjectSelectMenu { position-anchor: --subject-anchor; }
+#errorSubjectMenu { position-anchor: --error-subject-anchor; }
+#errorTypeMenu { position-anchor: --error-type-anchor; }
+
+.select-menu {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem;
+  min-width: 200px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  margin-top: 0.5rem;
+  
+  /* Positioning */
+  position: absolute;
+  top: anchor(bottom);
+  left: anchor(left);
+}
+
+.select-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.select-menu button:hover {
+  background: var(--item-active);
+  color: var(--accent);
+}
+
+.select-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.select-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.select-menu button:hover {
+  background: var(--item-active);
+  color: var(--accent);
+}
+
+.select-menu button:focus-visible {
+  outline: 2px solid var(--accent);
 }
 
 /* --- Session & Test Cards --- */

@@ -690,6 +690,7 @@ const DOM = {
   globalClearCompletedBtn: $('globalClearCompletedBtn'),
 
   subjectSelect:      $('subjectSelect'),
+  subjectTrigger:     $('subjectTrigger'),
   sessionDesc:        $('sessionDesc'),
   activeTimerDisplay: $('activeTimerDisplay'),
   startBtn:           $('startBtn'),
@@ -699,7 +700,6 @@ const DOM = {
   openModalBtn: $('openModalBtn'),
 
   sessionModal:    $('sessionModal'),
-  modalSubject:    $('modalSubject'),
   modalDuration:   $('modalDuration'),
   modalEndTime:    $('modalEndTime'),
   modalYesterday:  $('modalYesterday'),
@@ -745,8 +745,10 @@ const DOM = {
   addErrorForm:      $('addErrorForm'),
   errorLogList:      $('errorLogList'),
   errorSubjectSelect:$('errorSubjectSelect'),
+  errorSubjectTrigger: $('errorSubjectTrigger'),
   errorChapterInput: $('errorChapterInput'),
   errorTypeSelect:   $('errorTypeSelect'),
+  errorTypeTrigger:  $('errorTypeTrigger'),
   errorTakeawayInput:$('errorTakeawayInput'),
   errorSubjectFilters: $('errorSubjectFilters'),
   errorTypeFilters:    $('errorTypeFilters'),
@@ -1152,7 +1154,7 @@ DOM.sessionLog.addEventListener('click', (e) => {
 
 // -- TRACKER: MANUAL SESSION MODAL -- //
 DOM.openModalBtn.addEventListener('click', () => {
-  DOM.modalSubject.value   = 'physics';
+  document.querySelector('input[name="modalSubject"][value="physics"]').checked = true;
   DOM.modalDuration.value  = 30;
   DOM.modalEndTime.value   = '';
   DOM.modalYesterday.checked = false;
@@ -1166,7 +1168,12 @@ DOM.sessionModal.addEventListener('click', (e) => {
 });
 
 DOM.saveModalBtn.addEventListener('click', () => {
-  const subject     = DOM.modalSubject.value;
+  const checkedSubject = document.querySelector('input[name="modalSubject"]:checked');
+  if (!checkedSubject) {
+    showToast('Please select a subject', 'error');
+    return;
+  }
+  const subject     = checkedSubject.value;
   const durationMin = parseInt(DOM.modalDuration.value, 10);
   const desc        = DOM.modalDesc.value.trim();
   const endTimeStr  = DOM.modalEndTime.value;
@@ -2434,8 +2441,41 @@ function tfClearCompleted() {
   showToast(`${count} task${count !== 1 ? 's' : ''} cleared`, 'neutral');
 }
 
+function initCustomDropdowns() {
+    // 1. Accessibility for existing popovers
+    document.querySelectorAll('[popovertarget]').forEach(trigger => {
+        trigger.setAttribute('aria-haspopup', 'menu');
+        trigger.setAttribute('aria-expanded', 'false');
+        
+        trigger.addEventListener('toggle', (e) => {
+            trigger.setAttribute('aria-expanded', e.newState === 'open');
+        });
+    });
+
+    // 2. Selection Logic
+    document.querySelectorAll('.select-menu').forEach(menu => {
+        menu.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            
+            const trigger = document.querySelector(`[popovertarget="${menu.id}"]`);
+            const input = document.getElementById(trigger.getAttribute('data-input-id'));
+            
+            if (input) {
+                input.value = btn.dataset.value;
+                trigger.textContent = btn.textContent;
+                menu.hidePopover();
+            }
+        });
+    });
+}
+
+// Ensure this is called properly
+initCustomDropdowns();
+
 // --- INITIALIZATION --- //
 function initTaskflow() {
+  initCustomDropdowns();
   const now = new Date();
   tfSelectedYear = now.getFullYear();
   tfSelectedMonth = now.getMonth();

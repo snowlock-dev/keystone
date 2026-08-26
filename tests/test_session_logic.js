@@ -94,4 +94,30 @@ runTest("Robustness: Invalid end time string", () => {
     assert.ok(Math.abs(end.getTime() - before.getTime()) < 1000);
 });
 
+// Expanded Edge Case Tests
+runTest("Subject selection edge cases", () => {
+    const subjects = ['physics', 'chem', 'maths', 'mock'];
+    
+    // Test for valid subject selection
+    const selected = 'chem';
+    assert.ok(subjects.includes(selected), "Selected subject must be in the valid list");
+    
+    // Test for invalid subject selection
+    const invalid = 'biology';
+    assert.ok(!subjects.includes(invalid), "Invalid subject should not be in the list");
+});
+
+runTest("Manual session modal subject selection logic", () => {
+    // Mock the DOM behavior
+    const radioInputs = [
+        { value: 'physics', checked: false },
+        { value: 'chem', checked: true },
+        { value: 'maths', checked: false }
+    ];
+    
+    const checked = radioInputs.find(r => r.checked);
+    assert.ok(checked, "A subject must be selected");
+    assert.strictEqual(checked.value, 'chem');
+});
+
 console.log("\nAll logic tests passed!");

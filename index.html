@@ -239,12 +239,16 @@
             <div class="timer-top-row">
               <div class="form-group">
                 <label class="form-label" for="subjectSelect">Select Subject</label>
-                <select id="subjectSelect" class="form-select">
-                  <option value="physics">Physics</option>
-                  <option value="chem">Chemistry</option>
-                  <option value="maths">Maths</option>
-                  <option value="mock">Mock Tests</option>
-                </select>
+                <div class="custom-select-container">
+                  <button class="select-trigger" popovertarget="subjectSelectMenu" id="subjectTrigger" data-input-id="subjectSelect">Physics</button>
+                  <div popover id="subjectSelectMenu" class="select-menu">
+                    <button data-value="physics">Physics</button>
+                    <button data-value="chem">Chemistry</button>
+                    <button data-value="maths">Maths</button>
+                    <button data-value="mock">Mock Tests</button>
+                  </div>
+                </div>
+                <input type="hidden" id="subjectSelect" value="physics">
               </div>
               <div class="form-group" style="flex: 1; max-width: 400px;">
                 <label class="form-label" for="sessionDesc">Session Description (Optional)</label>
@@ -395,13 +399,25 @@
             <h3>Add Manual Session!</h3>
             <div class="modal-body">
               <div class="form-group">
-                <label class="form-label" for="modalSubject">Subject</label>
-                <select id="modalSubject" class="form-select">
-                  <option value="physics">Physics</option>
-                  <option value="chem">Chemistry</option>
-                  <option value="maths">Maths</option>
-                  <option value="mock">Mock Tests</option>
-                </select>
+                <label class="form-label">Subject</label>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <label class="switch-label" style="flex: 1;">
+                    <input type="radio" name="modalSubject" value="physics" checked>
+                    <span class="switch-text">Physics</span>
+                  </label>
+                  <label class="switch-label" style="flex: 1;">
+                    <input type="radio" name="modalSubject" value="chem">
+                    <span class="switch-text">Chemistry</span>
+                  </label>
+                  <label class="switch-label" style="flex: 1;">
+                    <input type="radio" name="modalSubject" value="maths">
+                    <span class="switch-text">Maths</span>
+                  </label>
+                  <label class="switch-label" style="flex: 1;">
+                    <input type="radio" name="modalSubject" value="mock">
+                    <span class="switch-text">Mock</span>
+                  </label>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label" for="modalDuration">Duration (minutes)</label>
@@ -525,12 +541,16 @@
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label">Subject</label>
-                  <select id="errorSubjectSelect" class="form-select">
-                    <option value="physics">Physics</option>
-                    <option value="chem">Chemistry</option>
-                    <option value="maths">Maths</option>
-                    <option value="mock">Mock Tests</option>
-                  </select>
+                  <div class="custom-select-container">
+                    <button type="button" class="select-trigger" popovertarget="errorSubjectMenu" id="errorSubjectTrigger" data-input-id="errorSubjectSelect">Physics</button>
+                    <div popover id="errorSubjectMenu" class="select-menu">
+                      <button data-value="physics">Physics</button>
+                      <button data-value="chem">Chemistry</button>
+                      <button data-value="maths">Maths</button>
+                      <button data-value="mock">Mock Tests</button>
+                    </div>
+                  </div>
+                  <input type="hidden" id="errorSubjectSelect" value="physics">
                 </div>
                 <div class="form-group">
                   <label class="form-label">Chapter / Topic</label>
@@ -539,12 +559,16 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Error Type</label>
-                <select id="errorTypeSelect" class="form-select">
-                  <option value="Conceptual Gap">Conceptual Gap</option>
-                  <option value="Silly Mistake">Silly Mistake</option>
-                  <option value="Calculation Error">Calculation Error</option>
-                  <option value="Others">Others</option>
-                </select>
+                <div class="custom-select-container">
+                  <button type="button" class="select-trigger" popovertarget="errorTypeMenu" id="errorTypeTrigger" data-input-id="errorTypeSelect">Conceptual Gap</button>
+                  <div popover id="errorTypeMenu" class="select-menu">
+                    <button data-value="Conceptual Gap">Conceptual Gap</button>
+                    <button data-value="Silly Mistake">Silly Mistake</button>
+                    <button data-value="Calculation Error">Calculation Error</button>
+                    <button data-value="Others">Others</button>
+                  </div>
+                </div>
+                <input type="hidden" id="errorTypeSelect" value="Conceptual Gap">
               </div>
               <div class="form-group">
                 <label class="form-label">Key Takeaway (What did you learn?)</label>
