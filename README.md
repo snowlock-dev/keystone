@@ -49,7 +49,7 @@ All dependencies are included natively in the project!
 ## Development & Testing
 
 While the application is pure vanilla JavaScript for the browser, Node.js is used during development to run local verification tests.
-(PS, the tests are only build for the time session logic)
+(the tests are only for the time session logic)
 
 * Verification tests are located in the `tests/` directory.
 * You can run them using: `node tests/test_session_logic.js`
@@ -60,12 +60,12 @@ While the application is pure vanilla JavaScript for the browser, Node.js is use
 
 ### Dashboard
 
-- *Daily Metrics:* I included active study streaks for both time and 
-questions, along with your average session durations so you know how 
-you're doing.
+- *Daily Metrics:* Included active study streaks for both time and 
+questions, along with your average session durations.
 
-- *Visual Analytics:* There are interactive 7-day bar charts segmented 
-by subject, plus a pie chart to see exactly where your focus is actually going. MADE USING CHART.JS
+- *Visual Analytics:* Interactive 7-day bar charts segmented 
+by subject, plus a pie chart to see exactly where your focus is actually going. 
+MADE USING CHART.JS
 
 - *Goal Tracking:* You can set daily goals for hours studied and questions solved.
 
@@ -75,7 +75,7 @@ by subject, plus a pie chart to see exactly where your focus is actually going. 
 - *Active Timer:* It pauses and resumes easily, but I made sure it 
 survives page reloads and syncs instantly across tabs.
 
-- *Session Logging:* You can do both automatic and manual logging. Manual logging now supports assigning sessions to **yesterday** and specifying a precise **End Time**.
+- *Session Logging:* You can do both automatic and manual logging. Manual logging now supports assigning sessions to yesterday and specifying a precise End Time.
 
 - For the subjects, I currently have it set to: Physics, Chemistry, Maths, 
 and Mock Tests (ie timed exam solving, stuff like that).
@@ -92,7 +92,7 @@ filtering for all/active/completed tasks and progress bars so you can
 - *Taskset:* I needed a place to just dump unscheduled ideas and chores, 
 so I built this global list.
 
-- *Zen Mode:* Actually a part of TaskSet, it is just a simple, distraction-free
+- *Zen Mode:* A part of TaskSet, it is just a simple, distraction-free
  fullscreen mode for when you need to focus.
 
 
@@ -172,7 +172,7 @@ you start getting close to that 5MB limit.
 ### Stretch Goals
 
 - [x] Replace custom SVG graphs with `chart.js`
-- [x] Add markdown for Quick Notes Section
+- [x] Add markdown support for Quick Notes Section
 
 
 ## Credits
