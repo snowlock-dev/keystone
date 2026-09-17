@@ -6,6 +6,9 @@ jspm_packages/
 env/
 *.env
 
+# tests dir
+tests/
+
 # Build outputs & distribution folders
 dist/
 build/
