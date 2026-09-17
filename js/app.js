@@ -54,6 +54,24 @@ function generateId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
 }
 
+function getLevenshteinDistance(s1, s2) {
+  if (s1.length < s2.length) [s1, s2] = [s2, s1];
+  let costs = Array.from({ length: s2.length + 1 }, (_, i) => i);
+  for (let i = 0; i < s1.length; i++) {
+    let last = i + 1;
+    for (let j = 0; j < s2.length; j++) {
+      let temp = costs[j + 1];
+      costs[j + 1] = Math.min(
+        costs[j + 1] + 1,
+        costs[j] + 1,
+        last + (s1[i] === s2[j] ? 0 : 1)
+      );
+      last = temp;
+    }
+  }
+  return costs[s2.length];
+}
+
 // Deep clone helper for transactional updates
 function deepClone(obj) {
   if (typeof structuredClone === 'function') {
