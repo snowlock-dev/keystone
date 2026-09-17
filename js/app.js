@@ -58,7 +58,7 @@ function getLevenshteinDistance(s1, s2) {
   if (s1.length < s2.length) [s1, s2] = [s2, s1];
   let costs = Array.from({ length: s2.length + 1 }, (_, i) => i);
   for (let i = 0; i < s1.length; i++) {
-    let last = i + 1;
+    let last = i;
     for (let j = 0; j < s2.length; j++) {
       let temp = costs[j + 1];
       costs[j + 1] = Math.min(
@@ -444,7 +444,7 @@ const Storage = {
       normalized.errors = data.errors
         .filter(e => e && typeof e === "object")
         .map(e => ({
-          id: typeof e.id === "string" ? e.id : generateId(),
+          id: typeof e.id === "string" && e.id.trim() !== "" ? e.id : generateId(),
           date: typeof e.date === "string" && !isNaN(new Date(e.date).getTime()) ? e.date : new Date().toISOString(),
           subject: typeof e.subject === "string" && SUBJECTS.some(s => s.key === e.subject) ? e.subject : "physics",
           chapter: typeof e.chapter === "string" ? e.chapter : "General",
@@ -1904,11 +1904,82 @@ function initErrorFilters() {
 
 let editingErrorId = null;
 
+function createErrorCard(e) {
+  const subj = subjectByKey(e.subject);
+  const typeColor = getErrorTypeColor(e.errorType);
+  
+  const dateObj = new Date(e.date);
+  const formattedDate = dateObj.toLocaleDateString(undefined, { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  });
+  
+  let takeawayHtml = '';
+  let actionsHtml = '';
+
+  if (editingErrorId === e.id) {
+    // Edit Mode UI
+    takeawayHtml = `
+      <textarea class="error-edit-input" id="errorEditInput-${e.id}" rows="4" placeholder="Edit your takeaway...">${escapeHtml(e.takeaway)}</textarea>
+      <div class="error-edit-actions">
+        <button class="error-save-btn" data-id="${e.id}"><i class="ph ph-check"></i> Save</button>
+        <button class="error-cancel-btn" data-id="${e.id}"><i class="ph ph-x"></i> Cancel</button>
+      </div>
+    `;
+  } else {
+    // Normal Mode UI
+    let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); 
+    if (typeof marked !== 'undefined') {
+      try {
+        parsedTakeaway = marked.parse(e.takeaway || "");
+      } catch (err) {
+        console.error("Markdown parsing failed:", err);
+        showToast('Markdown Parsing Failed!', 'error')
+      }
+    }
+    takeawayHtml = `<div class="error-takeaway markdown-body">${parsedTakeaway}</div>`;
+    
+    actionsHtml = `
+      <button class="error-action-btn error-edit-btn" data-id="${e.id}" aria-label="Edit description">
+        <i class="ph ph-pencil-simple"></i>
+      </button>
+      <button class="error-action-btn error-delete-btn" data-id="${e.id}" aria-label="Delete error">
+        <i class="ph ph-trash"></i>
+      </button>
+    `;
+  }
+  
+  const card = document.createElement('div');
+  card.className = 'error-card';
+  card.dataset.errorId = e.id;
+  card.innerHTML = `
+    <div class="error-actions-top">
+      ${actionsHtml}
+    </div>
+    <div class="error-content">
+      <h3 class="error-chapter">${escapeHtml(e.chapter)}</h3>
+      <p class="error-date">${formattedDate}</p>
+      
+      <div class="error-tags">
+        <span class="error-tag" style="background:${subj.color}22;color:${subj.color}">
+          <i class="ph-fill ${subj.icon}"></i> ${subj.name}
+        </span>
+        <span class="error-tag" style="background:${typeColor}22;color:${typeColor}">
+          ${escapeHtml(e.errorType)}
+        </span>
+      </div>
+      
+      <div class="error-divider"></div>
+      
+      ${takeawayHtml}
+    </div>
+  `;
+  return card;
+}
+
 function renderErrorLog() {
   if (!DOM.errorLogList) return;
   
-  let errors = Storage.getErrors().slice().sort((a, b) => new Date(b.date) - new Date(a.date));
-
+  let errors = Storage.getErrors();
   if (errFilterSubject !== 'all') errors = errors.filter(e => e.subject === errFilterSubject);
   if (errFilterType !== 'all') errors = errors.filter(e => e.errorType === errFilterType);
 
@@ -1919,76 +1990,75 @@ function renderErrorLog() {
     return;
   }
 
+  // 1. Group by Subject
+  const subjectOrder = ['physics', 'chem', 'maths'];
+  const groupedBySubject = {};
+  SUBJECTS.forEach(s => groupedBySubject[s.key] = []);
+  
   errors.forEach(e => {
-    const subj = subjectByKey(e.subject);
-    const typeColor = getErrorTypeColor(e.errorType);
-    
-    const dateObj = new Date(e.date);
-    const formattedDate = dateObj.toLocaleDateString(undefined, { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
-    
-    let takeawayHtml = '';
-    let actionsHtml = '';
+    if (!groupedBySubject[e.subject]) groupedBySubject[e.subject] = [];
+    groupedBySubject[e.subject].push(e);
+  });
 
-    if (editingErrorId === e.id) {
-      // Edit Mode UI
-      takeawayHtml = `
-        <textarea class="error-edit-input" id="errorEditInput-${e.id}" rows="4" placeholder="Edit your takeaway...">${escapeHtml(e.takeaway)}</textarea>
-        <div class="error-edit-actions">
-          <button class="error-save-btn" data-id="${e.id}"><i class="ph ph-check"></i> Save</button>
-          <button class="error-cancel-btn" data-id="${e.id}"><i class="ph ph-x"></i> Cancel</button>
-        </div>
-      `;
-    } else {
-      // Normal Mode UI
-      let parsedTakeaway = escapeHtml(e.takeaway || "").replace(/\n/g, '<br>'); 
-      if (typeof marked !== 'undefined') {
-        try {
-          parsedTakeaway = marked.parse(e.takeaway || "");
-        } catch (err) {
-          console.error("Markdown parsing failed:", err);
-          showToast('Markdown Parsing Failed!', 'error')
+  // Render
+  const subjectKeys = [...subjectOrder, ...Object.keys(groupedBySubject).filter(k => !subjectOrder.includes(k))];
+  
+  subjectKeys.forEach(sKey => {
+    const sGroup = groupedBySubject[sKey];
+    if (!sGroup || sGroup.length === 0) return;
+
+    // Render Subject Header
+    const subj = subjectByKey(sKey);
+    const subjHeader = document.createElement('h2');
+    subjHeader.className = 'error-subject-header';
+    subjHeader.textContent = subj.name;
+    DOM.errorLogList.appendChild(subjHeader);
+
+    // 2. Cluster by Chapter Similarity
+    const clusters = [];
+    sGroup.forEach(err => {
+      let found = false;
+      for (const cluster of clusters) {
+        if (getLevenshteinDistance(err.chapter, cluster.representative) <= 3) {
+          cluster.errors.push(err);
+          found = true;
+          break;
         }
       }
-      takeawayHtml = `<div class="error-takeaway markdown-body">${parsedTakeaway}</div>`;
+      if (!found) {
+        clusters.push({ representative: err.chapter, errors: [err] });
+      }
+    });
+
+    // Sort clusters by latest date of newest member (Newest first)
+    clusters.sort((a, b) => {
+      const maxA = Math.max(...a.errors.map(e => new Date(e.date).getTime()));
+      const maxB = Math.max(...b.errors.map(e => new Date(e.date).getTime()));
+      return maxB - maxA;
+    });
+
+    // Render clusters
+    clusters.forEach(cluster => {
+      const clusterEl = document.createElement('div');
+      clusterEl.className = 'error-chapter-subgroup';
       
-      actionsHtml = `
-        <button class="error-action-btn error-edit-btn" data-id="${e.id}" aria-label="Edit description">
-          <i class="ph ph-pencil-simple"></i>
-        </button>
-        <button class="error-action-btn error-delete-btn" data-id="${e.id}" aria-label="Delete error">
-          <i class="ph ph-trash"></i>
-        </button>
-      `;
-    }
-    
-    const card = document.createElement('div');
-    card.className = 'error-card';
-    card.dataset.errorId = e.id;
-    card.innerHTML = `
-      <div class="error-actions-top">
-        ${actionsHtml}
-      </div>
-      <div class="error-content">
-        <h3 class="error-chapter">${escapeHtml(e.chapter)}</h3>
-        <p class="error-date">${formattedDate}</p>
-        
-        <div class="error-tags">
-          <span class="error-tag" style="background:${subj.color}22;color:${subj.color}">
-            <i class="ph-fill ${subj.icon}"></i> ${subj.name}
-          </span>
-          <span class="error-tag" style="background:${typeColor}22;color:${typeColor}">
-            ${escapeHtml(e.errorType)}
-          </span>
-        </div>
-        
-        <div class="error-divider"></div>
-        
-        ${takeawayHtml}
-      </div>
-    `;
-    DOM.errorLogList.appendChild(card);
+      const clusterHeader = document.createElement('h3');
+      clusterHeader.className = 'error-chapter-header';
+      clusterHeader.textContent = cluster.representative;
+      clusterEl.appendChild(clusterHeader);
+      
+      const gridEl = document.createElement('div');
+      gridEl.className = 'error-chapter-grid';
+      clusterEl.appendChild(gridEl);
+      
+      // Sort errors in subgroup (Earliest first)
+      cluster.errors.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      cluster.errors.forEach(e => {
+        gridEl.appendChild(createErrorCard(e));
+      });
+      DOM.errorLogList.appendChild(clusterEl);
+    });
   });
 
   // Focus the textarea if we are editing

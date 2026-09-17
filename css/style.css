@@ -2063,19 +2063,53 @@ body.zen-mode .clock-hint {
 }
 
 #errorLogList {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.error-subject-header {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 3rem 0 1.5rem;
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-left: 6px solid var(--accent);
+  border-radius: 0;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  text-align: left;
+  color: var(--fg);
+}
+
+.error-chapter-subgroup {
+  margin: 1.5rem 0;
+}
+
+.error-chapter-header {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--fg);
+  padding-bottom: 0.5rem;
+  border-bottom: 3px dashed var(--muted);
+  display: block;
+  width: 100%;
+}
+
+.error-chapter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); 
-  gap: 2rem; 
-  padding-right: 0.5rem;
-  padding-top: 4px; /* added to account for the 4px translate effect */
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 2rem;
 }
 
 .error-card {
   position: relative;
   background: var(--card);
   border: 2px solid var(--border);
-  border-radius: 20px; 
-  padding: 3rem; 
+  border-radius: 20px;
+  padding: 2.5rem;
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   overflow: hidden;
 }
