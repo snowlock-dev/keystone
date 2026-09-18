@@ -55,6 +55,8 @@ function generateId() {
 }
 
 function getLevenshteinDistance(s1, s2) {
+  s1 = s1.toLowerCase();
+  s2 = s2.toLowerCase();
   if (s1.length < s2.length) [s1, s2] = [s2, s1];
   let costs = Array.from({ length: s2.length + 1 }, (_, i) => i);
   for (let i = 0; i < s1.length; i++) {
@@ -3042,6 +3044,46 @@ const GlobalSearch = {
       }
     }
 
+    // -- Search Chapters --
+    if (mode === 'all' || mode === 'errors') {
+      const errors = Storage.getErrors();
+      const uniqueChapters = [...new Set(errors.map(e => e.chapter))];
+      
+      for (const chapter of uniqueChapters) {
+        if (!needle || getLevenshteinDistance(chapter, needle) <= 3) {
+          const chapterErrors = errors
+            .filter(e => e.chapter === chapter)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+          const latestError = chapterErrors[0];
+          
+          results.push({
+            type: 'chapter',
+            title: chapter,
+            subtitle: `${chapterErrors.length} error${chapterErrors.length !== 1 ? 's' : ''}`,
+            icon: 'ph-book-bookmark',
+            color: 'rgb(107, 107, 107)',
+            searchText,
+            action: () => {
+              switchSection('errors');
+              errFilterSubject = 'all';
+              errFilterType = 'all';
+              renderErrorLog();
+              
+              setTimeout(() => {
+                const card = document.querySelector('[data-error-id="' + latestError.id + '"]');
+                if (card) {
+                  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  card.style.transition = 'box-shadow .3s ease';
+                  card.style.boxShadow = '0 0 0 2px rgb(107, 107, 107)';
+                  setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+                }
+              }, 350);
+            }
+          });
+        }
+      }
+    }
+
     // -- Search Errors --
     if (mode === 'all' || mode === 'errors') {
       const errors = Storage.getErrors().sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3060,6 +3102,10 @@ const GlobalSearch = {
             searchText,
             action: () => {
               switchSection('errors');
+              errFilterSubject = 'all';
+              errFilterType = 'all';
+              renderErrorLog();
+              
               setTimeout(() => {
                 const card = document.querySelector('[data-error-id="' + err.id + '"]');
                 if (card) {
@@ -3108,7 +3154,8 @@ const GlobalSearch = {
     // Group results by type when in "all" mode
     const tasks = this.currentResults.filter(r => r.type === 'task');
     const errors = this.currentResults.filter(r => r.type === 'error');
-    const showHeaders = tasks.length > 0 && errors.length > 0;
+    const chapters = this.currentResults.filter(r => r.type === 'chapter');
+    const showHeaders = (tasks.length > 0 && errors.length > 0) || (tasks.length > 0 && chapters.length > 0) || (errors.length > 0 && chapters.length > 0);
 
     let globalIndex = 0;
 
@@ -3124,7 +3171,7 @@ const GlobalSearch = {
           <div class="gs-item-title">${this.highlight(result.title, result.searchText)}</div>
           <div class="gs-item-subtitle">${escapeHtml(result.subtitle)}</div>
         </div>
-        <div class="gs-item-badge">${result.type === 'task' ? 'Task' : 'Error'}</div>
+        <div class="gs-item-badge">${result.type === 'task' ? 'Task' : result.type === 'chapter' ? 'Chapter' : 'Error'}</div>
       `;
       item.addEventListener('click', () => {
         this.selectedIndex = parseInt(item.dataset.index);
@@ -3145,6 +3192,14 @@ const GlobalSearch = {
       DOM.gsResults.appendChild(hdr);
     }
     tasks.forEach(renderItem);
+
+    if (showHeaders && chapters.length > 0) {
+      const hdr = document.createElement('div');
+      hdr.className = 'gs-section-header';
+      hdr.textContent = 'Chapters · ' + chapters.length;
+      DOM.gsResults.appendChild(hdr);
+    }
+    chapters.forEach(renderItem);
 
     if (showHeaders && errors.length > 0) {
       const hdr = document.createElement('div');
