@@ -401,28 +401,7 @@ const Storage = {
         }))
         .filter(t => t.text.trim() !== "");
     } else {
-      // Compatibility with taskset.html's legacy key "myTasks"
-      try {
-        const legacyTasks = localStorage.getItem('myTasks');
-        if (legacyTasks) {
-          const parsed = JSON.parse(legacyTasks);
-          if (Array.isArray(parsed)) {
-            normalized.globalTodos = parsed
-              .filter(t => t && typeof t === "object")
-              .map(t => ({
-                id: generateId(),
-                text: typeof t.text === 'string' ? t.text : '',
-                completed: !!t.completed,
-                createdAt: Date.now()
-              }))
-              .filter(t => t.text.trim() !== "");
-
-            localStorage.removeItem('myTasks'); 
-          }
-        }
-      } catch (err) {
-        console.error("Failed to migrate legacy taskset myTasks", err);
-      }
+      normalized.globalTodos = [];
     }
 
     // Normalize Tests
