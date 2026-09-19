@@ -479,7 +479,12 @@ const Storage = {
       localStorage.removeItem(STORAGE_KEY + "_tmp");
       return true;
     } catch (err) {
-      console.error("Keystone: storage write error", err);
+      if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        console.error("Keystone: Storage limit exceeded.", err);
+        showToast('Storage full! Please export your data and clear old sessions/tests.', 'error');
+      } else {
+        console.error("Keystone: storage write error", err);
+      }
       return false;
     }
   },
