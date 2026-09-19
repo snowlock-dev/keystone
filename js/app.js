@@ -838,7 +838,8 @@ function navigateCalendar(delta) {
 
 function renderCalendar() {
   DOM.calMonthYear.textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
-  DOM.calendarGrid.innerHTML = '';
+  
+  const fragment = document.createDocumentFragment();
 
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
@@ -864,8 +865,11 @@ function renderCalendar() {
       tfSwitchDay();
     });
 
-    DOM.calendarGrid.appendChild(cell);
+    fragment.appendChild(cell);
   }
+  
+  DOM.calendarGrid.innerHTML = '';
+  DOM.calendarGrid.appendChild(fragment);
 }
 
 DOM.calPrev.addEventListener('click', () => navigateCalendar(-1));
@@ -1113,38 +1117,41 @@ function renderSessionLog() {
     .slice()
     .sort((a, b) => new Date(b.end) - new Date(a.end));
 
-  DOM.sessionLog.innerHTML = '';
+  const fragment = document.createDocumentFragment();
 
   if (todaySessions.length === 0) {
-    DOM.sessionLog.innerHTML =
-      '<div style="grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">' +
-      'No sessions logged today. Get started!</div>';
-    return;
-  }
+    const emptyMsg = document.createElement('div');
+    emptyMsg.style = 'grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem';
+    emptyMsg.textContent = 'No sessions logged today. Get started!';
+    fragment.appendChild(emptyMsg);
+  } else {
+    for (const s of todaySessions) {
+      const subj = subjectByKey(s.subject);
+      const time = new Date(s.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  for (const s of todaySessions) {
-    const subj = subjectByKey(s.subject);
-    const time = new Date(s.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const item = document.createElement('div');
-    item.className = 'session-card';
-    item.innerHTML = `
-      <button class="session-delete-btn" data-id="${s.id}" aria-label="Delete session">
-        <i class="ph ph-x"></i>
-      </button>
-      <div class="session-content">
-        <div class="session-tags">
-            <span class="session-tag" style="background:${subj.color}22;color:${subj.color}">
-              <i class="ph-fill ${subj.icon}"></i> ${subj.name}
-            </span>
+      const item = document.createElement('div');
+      item.className = 'session-card';
+      item.innerHTML = `
+        <button class="session-delete-btn" data-id="${s.id}" aria-label="Delete session">
+          <i class="ph ph-x"></i>
+        </button>
+        <div class="session-content">
+          <div class="session-tags">
+              <span class="session-tag" style="background:${subj.color}22;color:${subj.color}">
+                <i class="ph-fill ${subj.icon}"></i> ${subj.name}
+              </span>
+          </div>
+          <div class="session-desc">${escapeHtml(s.description) || 'Ended at ' + time}</div>
+          <div class="session-time">Logged today</div>
+          <div class="session-duration">${formatDurationShort(s.duration)}</div>
         </div>
-        <div class="session-desc">${escapeHtml(s.description) || 'Ended at ' + time}</div>
-        <div class="session-time">Logged today</div>
-        <div class="session-duration">${formatDurationShort(s.duration)}</div>
-      </div>
-    `;
-    DOM.sessionLog.appendChild(item);
+      `;
+      fragment.appendChild(item);
+    }
   }
+
+  DOM.sessionLog.innerHTML = '';
+  DOM.sessionLog.appendChild(fragment);
 }
 
 DOM.sessionLog.addEventListener('click', (e) => {
@@ -1355,7 +1362,8 @@ function renderPieChart(allSessions) {
 
     const total = Object.values(pieData).reduce((a, b) => a + b, 0);
     DOM.pieTotal.textContent = formatDurationShort(total);
-    DOM.pieLegend.innerHTML = '';
+    
+    const fragment = document.createDocumentFragment();
 
     destroyChart('pieChart');
 
@@ -1364,63 +1372,72 @@ function renderPieChart(allSessions) {
       legend.className = 'legend-item';
       legend.style.color = 'var(--muted)';
       legend.textContent = 'No data yet';
-      DOM.pieLegend.appendChild(legend);
-      return;
-    }
+      fragment.appendChild(legend);
+    } else {
+      const labels = [];
+      const data = [];
+      const colors = [];
 
-    const labels = [];
-    const data = [];
-    const colors = [];
+      for (const subj of SUBJECTS) {
+        if (pieData[subj.key] > 0) {
+          labels.push(subj.name);
+          data.push(pieData[subj.key]);
+          colors.push(subj.color);
 
-    for (const subj of SUBJECTS) {
-      if (pieData[subj.key] > 0) {
-        labels.push(subj.name);
-        data.push(pieData[subj.key]);
-        colors.push(subj.color);
-
-        const pct = Math.round((pieData[subj.key] / total) * 100);
-        const legend = document.createElement('div');
-        legend.className = 'legend-item';
-        legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${pct}%)`;
-        DOM.pieLegend.appendChild(legend);
-      }
-    }
-
-    if (typeof Chart === 'undefined') return;
-
-    const cardColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--card').trim() || '#111';
-
-    chartInstances.pieChart = new Chart(DOM.pieChart.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels,
-        datasets: [{
-          data,
-          backgroundColor: colors,
-          borderColor: cardColor,
-          borderWidth: 2,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: '62%',
-        devicePixelRatio: 4,
-        plugins: {
-          legend: { display: false },
-          layout: {
-            padding: 50 
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => ` ${ctx.label}: ${formatDurationShort(ctx.raw)}`
-            }
-          }
+          const pct = Math.round((pieData[subj.key] / total) * 100);
+          const legend = document.createElement('div');
+          legend.className = 'legend-item';
+          legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${pct}%)`;
+          fragment.appendChild(legend);
         }
       }
-    });
+
+      if (typeof Chart !== 'undefined') {
+        const cardColor = getComputedStyle(document.documentElement)
+          .getPropertyValue('--card').trim() || '#111';
+
+        chartInstances.pieChart = new Chart(DOM.pieChart.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: colors,
+              borderColor: cardColor,
+              borderWidth: 2,
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '62%',
+            devicePixelRatio: 4,
+            plugins: {
+              legend: { display: false },
+              layout: {
+                padding: 50 
+              },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${ctx.label}: ${formatDurationShort(ctx.raw)}`
+                }
+              }
+            }
+          }
+        });
+      } else {
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'legend-item';
+        errorMsg.style.color = 'var(--muted)';
+        errorMsg.style.fontSize = '0.75rem';
+        errorMsg.textContent = 'Chart library unavailable';
+        fragment.appendChild(errorMsg);
+      }
+    }
+    
+    DOM.pieLegend.innerHTML = '';
+    DOM.pieLegend.appendChild(fragment);
   } catch (e) {
     console.error("Pie chart render error:", e);
     showToast('Pie chart render error', 'error');
@@ -1631,29 +1648,36 @@ function renderTestDashboard() {
   renderTestLineChart(tests);
 
   // 3. History List
-  DOM.testHistoryList.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+
   if (tests.length === 0) {
-    DOM.testHistoryList.innerHTML = '<div style="grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem">No tests logged yet.</div>';
-    return;
-  }
-  [...tests].reverse().forEach(t => {
-    const item = document.createElement('div');
-    item.className = 'test-card'; 
-    item.innerHTML = `
-      <button class="test-delete-btn" data-id="${t.id}" aria-label="Delete test">
-        <i class="ph ph-x"></i>
-      </button>
-      <div class="test-content">
-        <div class="test-tags">
-            <span class="test-tag" style="background: rgba(92, 155, 212, 0.15);color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
-            <span class="test-tag" style="background: rgba(212, 134, 76, 0.15);color: var(--accent)">${t.accuracy}% Acc</span>
+    const emptyMsg = document.createElement('div');
+    emptyMsg.style = 'grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem';
+    emptyMsg.textContent = 'No tests logged yet.';
+    fragment.appendChild(emptyMsg);
+  } else {
+    [...tests].reverse().forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'test-card'; 
+      item.innerHTML = `
+        <button class="test-delete-btn" data-id="${t.id}" aria-label="Delete test">
+          <i class="ph ph-x"></i>
+        </button>
+        <div class="test-content">
+          <div class="test-tags">
+              <span class="test-tag" style="background: rgba(92, 155, 212, 0.15);color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
+              <span class="test-tag" style="background: rgba(212, 134, 76, 0.15);color: var(--accent)">${t.accuracy}% Acc</span>
+          </div>
+          <div class="test-name">${escapeHtml(t.name)}</div>
+          <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
         </div>
-        <div class="test-name">${escapeHtml(t.name)}</div>
-        <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
-      </div>
-    `;
-    DOM.testHistoryList.appendChild(item);
-  });
+      `;
+      fragment.appendChild(item);
+    });
+  }
+  
+  DOM.testHistoryList.innerHTML = '';
+  DOM.testHistoryList.appendChild(fragment);
 }
 
 function renderTestLineChart(tests) {
