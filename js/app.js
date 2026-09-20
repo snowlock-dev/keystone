@@ -24,6 +24,8 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -85,6 +87,13 @@ function deepClone(obj) {
 function dayKey(date) {
   const d = date instanceof Date ? date : new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function getBackupFilename() {
+  const now = new Date();
+  const monthShort = MONTH_NAMES_SHORT[now.getMonth()];
+  const day = String(now.getDate()).padStart(2, '0');
+  return `keystone-backup-${monthShort}-${day}.json`;
 }
 
 function startOfDay(date) {
@@ -2136,13 +2145,14 @@ function exportData() {
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = 'keystone-backup.json';
+  const filename = getBackupFilename();
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  showToast('Backup exported to keystone-backup.json', 'success');
+  showToast(`Backup exported to ${filename}`, 'success');
 }
 
 function isValidBackup(parsed) {
