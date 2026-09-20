@@ -2040,11 +2040,11 @@ function renderErrorLog() {
       }
     });
 
-    // Sort clusters by latest date of newest member (Newest first)
+    // Sort clusters by latest date of oldest member (Newest first)
     clusters.sort((a, b) => {
-      const maxA = Math.max(...a.errors.map(e => new Date(e.date).getTime()));
-      const maxB = Math.max(...b.errors.map(e => new Date(e.date).getTime()));
-      return maxB - maxA;
+      const minA = Math.min(...a.errors.map(e => new Date(e.date).getTime()));
+      const minB = Math.min(...b.errors.map(e => new Date(e.date).getTime()));
+      return minB - minA;
     });
 
     // Render clusters
