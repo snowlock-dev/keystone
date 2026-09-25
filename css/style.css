@@ -2600,7 +2600,7 @@ body.zen-mode .clock-hint {
 
   .sidebar-nav {
     flex-direction: row;
-    overflow-x: visible;
+    overflow-x: auto;
     overflow-y: visible;
     gap: 0.5rem;
     padding-bottom: 0.25rem;
