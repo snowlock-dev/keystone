@@ -835,14 +835,10 @@ function isSameDay(a, b) {
 }
 
 function navigateCalendar(delta) {
-  DOM.calendarGrid.classList.add('fade-out');
-  setTimeout(() => {
-    calMonth += delta;
-    if (calMonth < 0)  { calMonth = 11; calYear--; }
-    if (calMonth > 11) { calMonth = 0;  calYear++; }
-    renderCalendar();
-    DOM.calendarGrid.classList.remove('fade-out');
-  }, 200);
+  calMonth += delta;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCalendar();
 }
 
 function renderCalendar() {
@@ -852,6 +848,7 @@ function renderCalendar() {
 
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
+  const tests = Storage.getTests();
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(calYear, calMonth, d);
@@ -860,9 +857,23 @@ function renderCalendar() {
     cell.style.cursor = 'pointer';
     
     if (isSameDay(dateObj, today)) cell.classList.add('today');
+
+    const dayTests = tests.filter(t => isSameDay(new Date(t.date), dateObj));
+    let examHtml = '';
+    if (dayTests.length > 0) {
+      const test = dayTests[0];
+      examHtml = `
+        <div class="exam-card" data-id="${test.id}">
+          <span class="exam-name">${escapeHtml(test.name)}</span>
+          <span class="exam-marks">${test.obtainedMarks}/${test.totalMarks}</span>
+        </div>
+      `;
+    }
+
     cell.innerHTML = `
       <span class="cal-dow">${DAY_NAMES_SHORT[dateObj.getDay()]}</span>
       <span class="cal-date">${d}</span>
+      ${examHtml}
     `;
     
     cell.addEventListener('click', () => {
@@ -873,6 +884,14 @@ function renderCalendar() {
       tsSwitchTab('daily');
       tfSwitchDay();
     });
+
+    const examCard = cell.querySelector('.exam-card');
+    if (examCard) {
+      examCard.addEventListener('click', (e) => {
+        e.stopPropagation();
+        switchSection('tests');
+      });
+    }
 
     fragment.appendChild(cell);
   }
