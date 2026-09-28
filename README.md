@@ -23,8 +23,6 @@ tracking, notes, and analytics into one unified website.
 > since I needed them in a hurry, and because I built this for myself.
 > That said, I went through and checked almost all the code myself, 
 > and fixed all the annoying bugs (security or otherwise) I could find.
->
-> Also, the demo.json was extended using Gemini
 
 
 ## Usage
@@ -34,9 +32,6 @@ tracking, notes, and analytics into one unified website.
 1. Go to the website: [keystone-snowlock.web.app](https://keystone-snowlock.web.app/)
 2. Try it out!
 
-(if you want to see how it would look with some data, download and load the demo json: 
-[assets/demo.json](https://github.com/snowlock-dev/keystone/blob/main/assets/demo.json))
-
 
 ### Local
 
@@ -45,14 +40,6 @@ tracking, notes, and analytics into one unified website.
 3. Visit *http://localhost:8000* on your browser of choice!
 
 All dependencies are included natively in the project!
-
-## Development & Testing
-
-While the application is pure vanilla JavaScript for the browser, Node.js is used during development to run local verification tests.
-(the tests are only for the time session logic)
-
-* Verification tests are located in the `tests/` directory.
-* You can run them using: `node tests/test_session_logic.js`
 
 
 ## Core Features
@@ -155,24 +142,6 @@ you start getting close to that 5MB limit.
 
 - *Export:* A 1-click export to a `keystone-backup.json` file that grabs all your notes, tasks, sessions, tests, and errors.
 - *Import:* When you bring it back in, it validates the entire JSON structure before it commits anything.
-
-
-## Roadmap
-
-- [x] Build placeholder `index.html`
-- [x] Add notes section
-- [x] Add a guideplan/taskflow section
-- [x] Add a timelog section with charts & graphs
-- [x] Add a daily goal section with streaks
-- [x] Add a good todo section
-- [x] Add a test dashboard
-- [x] Add an error dashboard
-
-
-### Stretch Goals
-
-- [x] Replace custom SVG graphs with `chart.js`
-- [x] Add markdown support for Quick Notes Section
 
 
 ## Credits

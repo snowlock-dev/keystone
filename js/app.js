@@ -264,6 +264,7 @@ const Storage = {
         days: {},
         activeSession: null
       },
+      deadline: { date: null, label: 'Until deadline' },
       globalTodos: [],
       tests: [],
       errors: []
@@ -326,6 +327,14 @@ const Storage = {
           typeof data.notes.content === "string"
             ? data.notes.content
             : ""
+      };
+    }
+
+    // Deadline
+    if (data.deadline && typeof data.deadline === "object") {
+      normalized.deadline = {
+        date: typeof data.deadline.date === "string" ? data.deadline.date : null,
+        label: typeof data.deadline.label === "string" ? data.deadline.label : 'Until deadline'
       };
     }
 
@@ -643,9 +652,7 @@ const Storage = {
   }
 };
 
-
 // --- DOM REFERENCES --- //
-
 const $ = (id) => document.getElementById(id);
 
 const DOM = {
@@ -770,9 +777,105 @@ const DOM = {
   gsOverlay:           $('gsOverlay'),
   gsInput:             $('gsInput'),
   gsResults:           $('gsResults'),
-  gsModeBadge:         $('gsModeBadge')
+  gsModeBadge:         $('gsModeBadge'),
+  daysTillCard:        $('daysTillCard'),
+  daysTillHeader:      $('daysTillHeader'),
+  daysTillInputs:      $('daysTillInputs'),
+  daysTillValue:       $('daysTillValue'),
+  daysTillLabel:       $('daysTillLabel'),
+  deadlineDate:        $('deadlineDate'),
+  deadlineLabel:       $('deadlineLabel'),
+  saveDeadlineBtn:     $('saveDeadlineBtn'),
+  clearDeadlineBtn:    $('clearDeadlineBtn')
 };
 
+// --- DAYS TILL CARD --- //
+
+function calculateDaysTill(deadline) {
+  if (!deadline) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffTime = new Date(deadline).getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+function renderDaysTill() {
+  const data = Storage.read();
+  const deadline = data.deadline || { date: null, label: 'Until deadline' };
+  
+  const daysLeft = calculateDaysTill(deadline.date);
+  
+  if (daysLeft !== null) {
+    if (daysLeft > 0) {
+      DOM.daysTillValue.textContent = `${daysLeft} days`;
+    } else if (daysLeft === 0) {
+      DOM.daysTillValue.textContent = `Today!`;
+    } else {
+      DOM.daysTillValue.textContent = `${Math.abs(daysLeft)} days ago`;
+    }
+  } else {
+    DOM.daysTillValue.textContent = '--';
+  }
+  
+  DOM.daysTillLabel.textContent = deadline.label || 'Until deadline';
+}
+
+DOM.daysTillCard.addEventListener('click', (e) => {
+  if (e.target.closest('input, button')) return;
+  DOM.daysTillHeader.style.display = 'none';
+  DOM.daysTillInputs.style.display = 'flex';
+  
+  const data = Storage.read();
+  DOM.deadlineDate.value = data.deadline?.date || '';
+  DOM.deadlineLabel.value = data.deadline?.label || '';
+});
+
+// Close edit mode when clicking outside the card
+document.addEventListener('click', (e) => {
+  if (!DOM.daysTillCard.contains(e.target)) {
+    DOM.daysTillHeader.style.display = 'flex';
+    DOM.daysTillInputs.style.display = 'none';
+  }
+});
+
+DOM.saveDeadlineBtn.addEventListener('click', () => {
+  const date = DOM.deadlineDate.value;
+  let label = DOM.deadlineLabel.value.trim() || 'Until deadline';
+  
+  if (!date) {
+    showToast("Please select a date", 'error');
+    return;
+  }
+  
+  if (label.length > 20) {
+    label = label.substring(0, 20);
+    showToast("Label limited to 20 characters", 'neutral');
+  }
+  
+  Storage.transaction(draft => {
+    draft.deadline = { date, label };
+  });
+  
+  DOM.daysTillHeader.style.display = 'flex';
+  DOM.daysTillInputs.style.display = 'none';
+  renderDaysTill();
+});
+
+DOM.clearDeadlineBtn.addEventListener('click', () => {
+  Storage.transaction(draft => {
+    draft.deadline = { date: null, label: 'Until deadline' };
+  });
+
+  DOM.deadlineDate.value = '';
+  DOM.deadlineLabel.value = '';
+
+  DOM.daysTillHeader.style.display = 'flex';
+  DOM.daysTillInputs.style.display = 'none';
+
+  renderDaysTill();
+});
+
+renderDaysTill();
 
 // --- TOAST NOTIFICATION --- //
 

@@ -8,7 +8,7 @@
   <meta property="og:description" content="A liteweight local-first workspace website">
 
   <meta property="og:image" content="https://raw.githubusercontent.com/snowlock-dev/keystone/refs/heads/main/assets/image.png">
-  <meta property="og:image:secure_url" content="https://raw.githubusercontent.com/snowlock-dev/keystone/refs/heads/main/assets/image.png">
+  <meta property="og:image:secure_url" content="https://raw.githubusercontent.com/snowlock-dev/keystone/refs/heads/main/assets/og-image.png">
   <meta property="og:image:type" content="image/png">
 
   <meta name="twitter:card" content="summary_large_image">
@@ -43,6 +43,19 @@
             <span>Keystone</span> 
           </a>
           <span class="a-arrow">↗</span>
+        </div>
+      </div>
+
+      <div class="days-till-card" id="daysTillCard">
+        <div class="days-till-header" id="daysTillHeader">
+          <span class="days-till-value" id="daysTillValue">0 days</span>
+          <span class="days-till-label" id="daysTillLabel">Until deadline</span>
+        </div>
+        <div class="days-till-inputs" id="daysTillInputs" style="display:none;">
+          <input type="date" id="deadlineDate" class="form-input">
+          <input type="text" id="deadlineLabel" class="form-input" placeholder="Label..." maxlength="20">
+          <button class="days-till-btn" id="saveDeadlineBtn">Save</button>
+          <button class="days-till-btn" id="clearDeadlineBtn" style="background: var(--muted);">Clear</button>
         </div>
       </div>
 
