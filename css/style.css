@@ -2920,6 +2920,7 @@ body.zen-mode .clock-hint {
   .form-row {
     flex-direction: column;
     gap: 1.5rem;
+    align-items: stretch;
   }
   
   .error-card, .session-card, .test-card {
