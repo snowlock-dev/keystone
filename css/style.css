@@ -2865,7 +2865,6 @@ body.zen-mode .clock-hint {
   }
 
   #barChart, #testLineChart {
-    min-width: 520px;
     width: 100%;
     height: auto;
   }
