@@ -2199,6 +2199,13 @@ body.zen-mode .clock-hint {
   z-index: 10;
 }
 
+.error-actions-top .test-delete-btn,
+.error-actions-top .session-delete-btn {
+  position: static;
+  top: auto;
+  right: auto;
+}
+
 .error-action-btn {
   width: 2.75rem;
   height: 2.75rem;

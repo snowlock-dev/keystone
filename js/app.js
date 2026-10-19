@@ -433,7 +433,8 @@ const Storage = {
           name: typeof t.name === "string" ? t.name : "Untitled Test",
           totalMarks: Number.isFinite(t.totalMarks) ? t.totalMarks : 300,
           obtainedMarks: Number.isFinite(t.obtainedMarks) ? t.obtainedMarks : 0,
-          accuracy: Number.isFinite(t.accuracy) ? t.accuracy : 0
+          accuracy: Number.isFinite(t.accuracy) ? t.accuracy : 0,
+          rank: Number.isFinite(Number(t.rank)) && Number(t.rank) >= 1 ? Number(t.rank) : (parseInt(t.rank, 10) >= 1 ? parseInt(t.rank, 10) : null)
         }));
     }
 
@@ -629,6 +630,21 @@ const Storage = {
       return draft.tests.length !== before;
     });
   },
+  updateTest(id, testData) {
+    return this.transaction(draft => {
+      const t = draft.tests.find(item => item.id === id);
+      if (t) {
+        if (testData.name !== undefined) t.name = testData.name;
+        if (testData.totalMarks !== undefined) t.totalMarks = testData.totalMarks;
+        if (testData.obtainedMarks !== undefined) t.obtainedMarks = testData.obtainedMarks;
+        if (testData.date !== undefined) t.date = testData.date;
+        if (testData.accuracy !== undefined) t.accuracy = testData.accuracy;
+        if (testData.rank !== undefined) t.rank = testData.rank;
+        return true;
+      }
+      return false;
+    });
+  },
 
   // -- Errors ----
   getErrors() { return deepClone(this.read().errors || []); },
@@ -760,6 +776,7 @@ const DOM = {
   testTotalInput:    $('testTotalInput'),
   testObtainedInput: $('testObtainedInput'),
   testAccuracyInput: $('testAccuracyInput'),
+  testRankInput:     $('testRankInput'),
 
   // Error Log
   addErrorForm:      $('addErrorForm'),
@@ -1734,6 +1751,7 @@ function renderDashboard() {
 // TEST DASHBOARD LOGIC
 let errFilterSubject = 'all';
 let errFilterType = 'all';
+let editingTestId = null;
 
 function renderTestDashboard() {
   const tests = Storage.getTests().slice().sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1790,25 +1808,88 @@ function renderTestDashboard() {
     [...tests].reverse().forEach(t => {
       const item = document.createElement('div');
       item.className = 'test-card'; 
-      item.innerHTML = `
-        <button class="test-delete-btn" data-id="${t.id}" aria-label="Delete test">
-          <i class="ph ph-x"></i>
-        </button>
-        <div class="test-content">
-          <div class="test-tags">
-              <span class="test-tag" style="background: rgba(92, 155, 212, 0.15);color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
-              <span class="test-tag" style="background: rgba(212, 134, 76, 0.15);color: var(--accent)">${t.accuracy}% Acc</span>
+
+      let actionsHtml = '';
+      let contentHtml = '';
+
+      if (editingTestId === t.id) {
+        const dateVal = t.date ? t.date.split('T')[0] : '';
+        contentHtml = `
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div class="form-group" style="margin-bottom:0; min-width:0;">
+              <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Date Taken</label>
+              <input type="date" class="form-input" id="testEditDate-${t.id}" value="${dateVal}">
+            </div>
+            <div class="form-group" style="margin-bottom:0; min-width:0;">
+              <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Test Name</label>
+              <input type="text" class="form-input" id="testEditName-${t.id}" value="${escapeAttr(t.name)}">
+            </div>
+            <div class="form-row" style="margin-bottom:0; display:flex; gap:1rem;">
+              <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Total Marks</label>
+                <input type="number" class="form-input" id="testEditTotal-${t.id}" value="${t.totalMarks}">
+              </div>
+              <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Obtained</label>
+                <input type="number" class="form-input" id="testEditObtained-${t.id}" value="${t.obtainedMarks}">
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0; display:flex; gap:1rem;">
+              <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Accuracy (%)</label>
+                <input type="number" class="form-input" id="testEditAccuracy-${t.id}" step="0.1" value="${t.accuracy}">
+              </div>
+              <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                <label class="form-label" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Rank (Opt)</label>
+                <input type="number" class="form-input" id="testEditRank-${t.id}" value="${t.rank !== null && t.rank !== undefined ? t.rank : ''}" placeholder="e.g. 42" min="1">
+              </div>
+            </div>
+            <div class="error-edit-actions" style="margin-top: 0.5rem;">
+              <button class="error-save-btn test-save-btn" data-id="${t.id}"><i class="ph ph-check"></i> Save</button>
+              <button class="error-cancel-btn test-cancel-btn" data-id="${t.id}"><i class="ph ph-x"></i> Cancel</button>
+            </div>
           </div>
-          <div class="test-name">${escapeHtml(t.name)}</div>
-          <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
-        </div>
-      `;
+        `;
+      } else {
+        actionsHtml = `
+          <div class="error-actions-top">
+            <button class="error-action-btn error-edit-btn test-edit-btn" data-id="${t.id}" aria-label="Edit test">
+              <i class="ph ph-pencil-simple"></i>
+            </button>
+            <button class="error-action-btn error-delete-btn test-delete-btn" data-id="${t.id}" aria-label="Delete test">
+              <i class="ph ph-trash"></i>
+            </button>
+          </div>
+        `;
+        const rankTag = t.rank !== null && t.rank !== undefined ? `<span class="test-tag" style="background: rgba(139, 92, 246, 0.15);color: rgb(139, 92, 246)">Rank #${t.rank}</span>` : '';
+        contentHtml = `
+          <div class="test-content">
+            <div class="test-tags">
+                <span class="test-tag" style="background: rgba(92, 155, 212, 0.15);color: var(--info)">${t.obtainedMarks}/${t.totalMarks}</span>
+                <span class="test-tag" style="background: rgba(212, 134, 76, 0.15);color: var(--accent)">${t.accuracy}% Acc</span>
+                ${rankTag}
+            </div>
+            <div class="test-name">${escapeHtml(t.name)}</div>
+            <div class="test-date">${new Date(t.date).toLocaleDateString()}</div>
+          </div>
+        `;
+      }
+
+      item.innerHTML = actionsHtml + contentHtml;
       fragment.appendChild(item);
     });
   }
   
   DOM.testHistoryList.innerHTML = '';
   DOM.testHistoryList.appendChild(fragment);
+
+  if (editingTestId) {
+    const nameInput = document.getElementById(`testEditName-${editingTestId}`);
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+    }
+  }
 }
 
 function renderTestLineChart(tests) {
@@ -1820,6 +1901,8 @@ function renderTestLineChart(tests) {
     const ctx = DOM.testLineChart.getContext('2d');
     const accentColor = getComputedStyle(document.documentElement)
       .getPropertyValue('--accent').trim() || '#d4864c';
+    const infoColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--info').trim() || '#5c9bd4';
 
     if (tests.length === 0) {
       chartInstances.testLineChart = new Chart(ctx, {
@@ -1853,26 +1936,46 @@ function renderTestLineChart(tests) {
 
     const maxMarks = Math.max(...tests.map(t => t.totalMarks), 100);
     const labels = tests.map(t => new Date(t.date).toLocaleDateString());
-    const data = tests.map(t => t.obtainedMarks);
+    const dataMarks = tests.map(t => t.obtainedMarks);
+    const dataRanks = tests.map(t => (t.rank !== null && t.rank !== undefined ? t.rank : null));
 
     chartInstances.testLineChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          label: 'Obtained Marks',
-          data,
-          borderColor: accentColor,
-          backgroundColor: accentColor + '1a',
-          fill: true,
-          tension: 0.4,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-          pointBackgroundColor: accentColor,
-          pointBorderColor: accentColor,
-          hitRadius: 32,
-          borderWidth: 4,
-        }]
+        datasets: [
+          {
+            label: 'Obtained Marks',
+            data: dataMarks,
+            yAxisID: 'y',
+            borderColor: accentColor,
+            backgroundColor: accentColor + '1a',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointBackgroundColor: accentColor,
+            pointBorderColor: accentColor,
+            hitRadius: 32,
+            borderWidth: 4,
+          },
+          {
+            label: 'Rank',
+            data: dataRanks,
+            yAxisID: 'y1',
+            borderColor: infoColor,
+            backgroundColor: infoColor + '1a',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            pointBackgroundColor: infoColor,
+            pointBorderColor: infoColor,
+            hitRadius: 32,
+            borderWidth: 3,
+            spanGaps: true,
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -1881,18 +1984,39 @@ function renderTestLineChart(tests) {
         scales: {
           x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6b6b', font: { size: 10 } } },
           y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
             beginAtZero: true,
             max: maxMarks,
             grid: { color: 'rgba(255,255,255,0.05)' },
             ticks: { color: '#6b6b6b', font: { size: 10 } }
+          },
+          y1: {
+            type: 'linear',
+            display: tests.some(t => t.rank !== null && t.rank !== undefined),
+            position: 'right',
+            reverse: true, // Rank 1 at top, lower rank goes to bottom
+            beginAtZero: false,
+            min: 1,
+            grid: { drawOnChartArea: false },
+            ticks: { color: '#6b6b6b', font: { size: 10 } }
           }
         },
         plugins: {
-          legend: { display: false },
+          legend: { display: true, labels: { color: '#b0b0b0', font: { family: 'Space Grotesk' } } },
           tooltip: {
             callbacks: {
               title: (items) => tests[items[0].dataIndex].name,
-              label: (ctx) => ` Score: ${ctx.raw} / ${tests[ctx.dataIndex].totalMarks} (${tests[ctx.dataIndex].accuracy}%)`
+              label: (ctx) => {
+                const t = tests[ctx.dataIndex];
+                if (ctx.dataset.label === 'Obtained Marks') {
+                  return ` Score: ${ctx.raw} / ${t.totalMarks} (${t.accuracy}%)`;
+                } else if (ctx.dataset.label === 'Rank') {
+                  return t.rank !== null && t.rank !== undefined ? ` Rank: #${t.rank}` : null;
+                }
+                return '';
+              }
             }
           }
         }
@@ -1926,18 +2050,22 @@ if (DOM.addTestForm) {
       testDate.setHours(new Date().getHours(), new Date().getMinutes()); // Add current time so it sorts correctly
     }
 
+    const rankVal = DOM.testRankInput.value.trim();
+    const rank = rankVal !== '' ? Math.max(1, parseInt(rankVal, 10) || 1) : null;
     const test = {
       id: generateId(),
       date: testDate.toISOString(),
       name: DOM.testNameInput.value.trim() || 'Mock Test',
       totalMarks: parseInt(DOM.testTotalInput.value, 10) || 300,
       obtainedMarks: parseInt(DOM.testObtainedInput.value, 10) || 0,
-      accuracy: parseFloat(DOM.testAccuracyInput.value) || 0
+      accuracy: parseFloat(DOM.testAccuracyInput.value) || 0,
+      rank
     };
     Storage.addTest(test);
     showToast('Test logged successfully', 'success');
     DOM.addTestForm.reset();
     DOM.testTotalInput.value = 300;
+    DOM.testRankInput.value = '';
     
     // Reset the date picker to today after submission
     DOM.testDateInput.value = new Date().toISOString().split('T')[0];
@@ -1948,11 +2076,60 @@ if (DOM.addTestForm) {
 
 if (DOM.testHistoryList) {
   DOM.testHistoryList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.test-delete-btn');
-    if (!btn) return;
-    Storage.removeTest(btn.dataset.id);
-    showToast('Test removed', 'neutral');
-    renderTestDashboard();
+    const editBtn = e.target.closest('.test-edit-btn');
+    const cancelBtn = e.target.closest('.test-cancel-btn');
+    const saveBtn = e.target.closest('.test-save-btn');
+    const deleteBtn = e.target.closest('.test-delete-btn');
+
+    if (editBtn) {
+      editingTestId = editBtn.dataset.id;
+      renderTestDashboard();
+    } else if (cancelBtn) {
+      editingTestId = null;
+      renderTestDashboard();
+    } else if (saveBtn) {
+      const id = saveBtn.dataset.id;
+      const dateInput = document.getElementById(`testEditDate-${id}`);
+      const nameInput = document.getElementById(`testEditName-${id}`);
+      const totalInput = document.getElementById(`testEditTotal-${id}`);
+      const obtainedInput = document.getElementById(`testEditObtained-${id}`);
+      const accuracyInput = document.getElementById(`testEditAccuracy-${id}`);
+      const rankInput = document.getElementById(`testEditRank-${id}`);
+
+      if (nameInput && totalInput && obtainedInput) {
+        const dateStr = dateInput ? dateInput.value : '';
+        let testDate = new Date();
+        if (dateStr) {
+          const parts = dateStr.split('-');
+          testDate = new Date(parts[0], parts[1] - 1, parts[2]);
+          testDate.setHours(new Date().getHours(), new Date().getMinutes());
+        }
+
+        const name = nameInput.value.trim() || 'Mock Test';
+        const totalMarks = parseInt(totalInput.value, 10) || 300;
+        const obtainedMarks = parseInt(obtainedInput.value, 10) || 0;
+        const accuracy = accuracyInput ? (parseFloat(accuracyInput.value) || 0) : 0;
+        const rankVal = rankInput ? rankInput.value.trim() : '';
+        const rank = rankVal !== '' ? Math.max(1, parseInt(rankVal, 10) || 1) : null;
+
+        Storage.updateTest(id, {
+          name,
+          date: testDate.toISOString(),
+          totalMarks,
+          obtainedMarks,
+          accuracy,
+          rank
+        });
+
+        editingTestId = null;
+        renderTestDashboard();
+        showToast('Test updated', 'success');
+      }
+    } else if (deleteBtn) {
+      Storage.removeTest(deleteBtn.dataset.id);
+      showToast('Test removed', 'neutral');
+      renderTestDashboard();
+    }
   });
 }
 
