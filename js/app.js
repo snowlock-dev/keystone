@@ -978,7 +978,7 @@ function renderCalendar() {
     
     if (isSameDay(dateObj, today)) cell.classList.add('today');
 
-    const dayTests = tests.filter(t => isSameDay(new Date(t.date), dateObj));
+    const dayTests = tests.filter(t => dayKey(new Date(t.date)) === dayKey(dateObj));
     let examHtml = '';
     if (dayTests.length > 0) {
       const test = dayTests[0];
@@ -2052,12 +2052,20 @@ if (DOM.addTestForm) {
 
     const rankVal = DOM.testRankInput.value.trim();
     const rank = rankVal !== '' ? Math.max(1, parseInt(rankVal, 10) || 1) : null;
+    const totalMarks = parseInt(DOM.testTotalInput.value, 10) || 300;
+    const obtainedMarks = parseInt(DOM.testObtainedInput.value, 10) || 0;
+
+    if (obtainedMarks > totalMarks) {
+      showToast('Obtained marks cannot exceed total marks', 'error');
+      return;
+    }
+
     const test = {
       id: generateId(),
       date: testDate.toISOString(),
       name: DOM.testNameInput.value.trim() || 'Mock Test',
-      totalMarks: parseInt(DOM.testTotalInput.value, 10) || 300,
-      obtainedMarks: parseInt(DOM.testObtainedInput.value, 10) || 0,
+      totalMarks,
+      obtainedMarks,
       accuracy: parseFloat(DOM.testAccuracyInput.value) || 0,
       rank
     };
@@ -3581,19 +3589,12 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Refresh search results when another tab modifies data
 window.addEventListener('storage', (e) => {
   if (e.key !== STORAGE_KEY) return;
+
   if (GlobalSearch.isOpen) {
     GlobalSearch.handleInput();
   }
-});
-
-
-// CROSS-TAB SYNCHRONIZATION
-window.addEventListener('storage', (e) => {
-  // Only react to changes on our primary storage key (ignore _tmp backup operations)
-  if (e.key !== STORAGE_KEY) return;
 
   // Invalidate all caches to force a fresh read from localStorage
   Storage._cache = null;
