@@ -15,106 +15,31 @@ It was built with a focus on fast performance, crash-safe data handling,
 and keyboard-driven workflows, bringing together task management, time 
 tracking, notes, and analytics into one unified website.
 
-
 > [!NOTE]
 > ABOUT AI USAGE:
 >
-> I used AI to help build the early versions of the tools in Keystone 
-> since I needed them in a hurry, and because I built this for myself.
-> That said, I went through and checked almost all the code myself, 
-> and fixed all the annoying bugs (security or otherwise) I could find.
+> A lot of code was AI-assisted and generated.
+> I have done my best to test them out, but I cannot
+> guarentee a bug-free experience.
+
+> [!IMPORTANT]
+>
+> Since Keystone is made to fill my own needs, feature 
+> updates break older backups. If you want to use this project
+> I highly recommend making a fork
+> (backward compatibility for legacy data isn't guarenteed!)
 
 
 ## Usage
 
-### Live
-
-1. Go to the website: [keystone-snowlock.web.app](https://keystone-snowlock.web.app/)
-2. Try it out!
-
-
-### Local
-
-1. Clone the repo.
-2. Start a live server: I prefer python: `python -m http.server 8000`
-3. Visit *http://localhost:8000* on your browser of choice!
-
-All dependencies are included natively in the project!
-
-
-## Core Features
-
-
-### Dashboard
-
-- *Daily Metrics:* Included active study streaks for both time and 
-questions, along with your average session durations.
-
-- *Visual Analytics:* Interactive 7-day bar charts segmented 
-by subject, plus a pie chart to see exactly where your focus is actually going. 
-MADE USING CHART.JS
-
-- *Goal Tracking:* You can set daily goals for hours studied and questions solved.
-
-
-### Study Tracker & Timer
-
-- *Active Timer:* It pauses and resumes easily, but I made sure it 
-survives page reloads and syncs instantly across tabs.
-
-- *Session Logging:* You can do both automatic and manual logging. Manual logging now supports assigning sessions to yesterday and specifying a precise End Time.
-
-- For the subjects, I currently have it set to: Physics, Chemistry, Maths, 
-and Mock Tests (ie timed exam solving, stuff like that).
-
-
-### Task Management (TaskFlow & Taskset)
-
-Both of these tools were ported over from older standalone version that I had
-
-- *TaskFlow:* This is a calendar-driven daily task list. I added 
-filtering for all/active/completed tasks and progress bars so you can
- see what's left.
-
-- *Taskset:* I needed a place to just dump unscheduled ideas and chores, 
-so I built this global list.
-
-- *Zen Mode:* A part of TaskSet, it is just a simple, distraction-free
- fullscreen mode for when you need to focus.
-
-
-### Quick Notes
-
-- The built-in quick notes are simple, using a debounced auto-save so it doesn't freeze up.
-
-- I also made sure it flushes any pending saves right on `beforeunload` so you never lose a thought.
-
-
-### Tests & Error Logs
-
-- *Test Dashboard:* You can log your mock test scores here. I added progress charts 
-and a prediction for your average based on your last 3 tests.
-
-- *Error Log:* I built this to strictly catalog mistakes by subject, chapter, and type 
-(Conceptual/Silly/Calculation/Other). You can filter by the type of mistake and 
-write out markdown takeaways.
-
-Error Logs was one of the most important and essential features for this project, and I am happy how it turned out
-
-
-### Global Search (Ctrl/Cmd + K)
- 
-- It's a fuzzy-search inspired by fuzzel and wofi, to really complete the workflow.
-
-- It searches through all your daily tasks, global tasks, and error logs instantly.
-
-- I added bangs like `!t` for tasks and `!e` for errors to narrow things down quickly.
-
+1. Using the web version: [Keystone](https://keystone-snowlock.web.app)
+2. Locally: CLone the repo and start a http server (`python -m http.server 8000`). 
+Then visit it on any browser (`localhost:8000`)
 
 ## Keyboard Shortcuts
 1. `Ctrl/Cmd + K`: Opens Global Search
 2. `Ctrl/Cmd + 1–6`: Jumping between sections
-3. `←/→`: Moving through months in calendar & days in taskflow
+3. `←-/-→`: Moving through months in calendar & days in taskflow
 4. `/`: Focuses the task input in TaskFlow
 5. `Esc`: Closes modals or kicks you out of Zen Mode
 
@@ -136,13 +61,6 @@ IDs, and migrates any of the older, legacy data.
 
 - *Storage Limit Awareness:* It tracks the actual byte size using `TextEncoder` and warns you when 
 you start getting close to that 5MB limit.
-
-
-## Backup & Restore
-
-- *Export:* A 1-click export to a `keystone-backup.json` file that grabs all your notes, tasks, sessions, tests, and errors.
-- *Import:* When you bring it back in, it validates the entire JSON structure before it commits anything.
-
 
 ## Credits
 
