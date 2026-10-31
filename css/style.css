@@ -3080,6 +3080,12 @@ body.zen-mode .clock-hint {
   outline: none;
 }
 
+.kanban-item .todo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .kanban-item:active {
   cursor: grabbing;
 }
@@ -3101,7 +3107,7 @@ body.zen-mode .clock-hint {
   cursor: grabbing;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .kanban-board {
     flex-direction: column;
     overflow-x: visible;

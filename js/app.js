@@ -3098,7 +3098,98 @@ function tsRender() {
 
       item.addEventListener('dragend', () => {
         item.classList.remove('dragging');
-        document.querySelectorAll('.kanban-dropzone').forEach(z => z.classList.remove('drag-over'));
+        document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+      });
+
+      // Touch Drag and Drop Support
+      let touchGhost = null;
+      let startX = 0, startY = 0;
+
+      item.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.todo-actions') || e.target.closest('input')) return;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+      }, { passive: true });
+
+      item.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+
+        if (!touchGhost && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+          item.classList.add('dragging');
+          touchGhost = item.cloneNode(true);
+          touchGhost.style.position = 'fixed';
+          touchGhost.style.zIndex = '9999';
+          touchGhost.style.pointerEvents = 'none';
+          touchGhost.style.opacity = '0.85';
+          touchGhost.style.width = item.offsetWidth + 'px';
+          document.body.appendChild(touchGhost);
+        }
+
+        if (touchGhost) {
+          e.preventDefault();
+          touchGhost.style.left = (touch.clientX - touchGhost.offsetWidth / 2) + 'px';
+          touchGhost.style.top = (touch.clientY - 30) + 'px';
+
+          document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const colBelow = elemBelow ? elemBelow.closest('.kanban-column') : null;
+          if (colBelow) {
+            colBelow.classList.add('drag-over');
+          }
+        }
+      }, { passive: false });
+
+      item.addEventListener('touchend', (e) => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+
+        if (touchGhost) {
+          const touch = e.changedTouches[0];
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const colBelow = elemBelow ? elemBelow.closest('.kanban-column') : null;
+
+          if (colBelow) {
+            const dropzone = colBelow.querySelector('.kanban-dropzone');
+            const newStatus = dropzone ? dropzone.dataset.status : null;
+            if (newStatus) {
+              const draggedIndex = tsTodos.findIndex(t => t.id === todo.id);
+              if (draggedIndex !== -1) {
+                const [draggedTodo] = tsTodos.splice(draggedIndex, 1);
+                const oldStatus = draggedTodo.status;
+                draggedTodo.status = newStatus;
+
+                const targetItemEl = elemBelow ? elemBelow.closest('.todo-item') : null;
+                if (targetItemEl && targetItemEl.dataset.id !== todo.id) {
+                  const targetId = targetItemEl.dataset.id;
+                  const targetIndex = tsTodos.findIndex(t => t.id === targetId);
+                  if (targetIndex !== -1) {
+                    tsTodos.splice(targetIndex, 0, draggedTodo);
+                  } else {
+                    tsTodos.push(draggedTodo);
+                  }
+                } else {
+                  tsTodos.push(draggedTodo);
+                }
+
+                if (newStatus === 'done' && oldStatus !== 'done') {
+                  playCompletionSfx();
+                  showToast('Task completed & reordered', 'success');
+                } else {
+                  showToast('Task reordered', 'success');
+                }
+
+                tsSaveTodos();
+                tsRender();
+              }
+            }
+          }
+
+          touchGhost.remove();
+          touchGhost = null;
+        }
       });
 
       if (tsEditingId === todo.id) {
