@@ -452,7 +452,7 @@ button:disabled {
 }
 
 .section-view[data-section="taskflow"] {
-  max-width: 720px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
 }
@@ -3006,6 +3006,110 @@ body.zen-mode .clock-hint {
   #errorLogList, #sessionLog, #testHistoryList {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+}
+
+/* Kanban Board */
+.kanban-board {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.kanban-board::-webkit-scrollbar {
+  display: none;
+}
+
+.kanban-column {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 calc((100% - 1.5rem) / 2);
+  min-height: 540px;
+  scroll-snap-align: start;
+  transition: border-color 0.25s, background-color 0.25s;
+}
+
+.kanban-column.drag-over {
+  border: 2px dashed var(--accent);
+  background: var(--surface);
+}
+
+.kanban-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.kanban-column-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0;
+}
+
+.kanban-count {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.kanban-dropzone {
+  flex: 1;
+  min-height: 180px;
+  border-radius: 12px;
+}
+
+.kanban-item {
+  cursor: grab;
+  outline: none;
+}
+
+.kanban-item:active {
+  cursor: grabbing;
+}
+
+.kanban-item.dragging {
+  opacity: 0.4;
+}
+
+.drag-handle {
+  color: var(--muted);
+  cursor: grab;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+@media (max-width: 900px) {
+  .kanban-board {
+    flex-direction: column;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+  .kanban-column {
+    flex: 1 1 auto;
+    min-height: 380px;
   }
 }
 
