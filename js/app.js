@@ -411,12 +411,20 @@ const Storage = {
     if (data && Array.isArray(data.globalTodos)) {
       normalized.globalTodos = data.globalTodos
         .filter(t => t && typeof t === "object")
-        .map(t => ({
-          id:       typeof t.id === "string" ? t.id : generateId(),
-          text:     typeof t.text === "string" ? t.text : "",
-          completed: !!t.completed,
-          createdAt: Number.isSafeInteger(t.createdAt) ? t.createdAt : Date.now()
-        }))
+        .map(t => {
+          let status = 'todo';
+          if (t.status && ['todo', 'doing', 'done'].includes(t.status)) {
+            status = t.status;
+          } else if (t.completed === true) {
+            status = 'done';
+          }
+          return {
+            id:       typeof t.id === "string" ? t.id : generateId(),
+            text:     typeof t.text === "string" ? t.text : "",
+            status:   status,
+            createdAt: Number.isSafeInteger(t.createdAt) ? t.createdAt : Date.now()
+          };
+        })
         .filter(t => t.text.trim() !== "");
     } else {
       normalized.globalTodos = [];
@@ -706,7 +714,6 @@ const DOM = {
   todayChip:          $('todayChip'),
   contentArea:        $('contentArea'),
   filterTabs:         document.querySelectorAll('#dailyFlowContainer .filter-tabs .filter-tab'),
-  globalFilterTabs:   document.querySelectorAll('#tasksetContainer .filter-tabs .filter-tab'),
 
   tabDailyFlow:       $('tabDailyFlow'),
   tabTaskset:         $('tabTaskset'),
@@ -717,7 +724,12 @@ const DOM = {
 
   globalTodoInput:         $('globalTodoInput'),
   globalAddBtn:            $('globalAddBtn'),
-  globalTodoList:          $('globalTodoList'),
+  kanbanTodoList:          $('kanbanTodoList'),
+  kanbanDoingList:         $('kanbanDoingList'),
+  kanbanDoneList:          $('kanbanDoneList'),
+  kanbanTodoCount:         $('kanbanTodoCount'),
+  kanbanDoingCount:        $('kanbanDoingCount'),
+  kanbanDoneCount:         $('kanbanDoneCount'),
   globalStatsBar:          $('globalStatsBar'),
   globalActiveCount:       $('globalActiveCount'),
   globalProgressSection:   $('globalProgressSection'),
@@ -3010,29 +3022,22 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-// --- Global Todo Logic ---
+// --- Global Todo / Kanban Logic ---
 function tsLoadTodos() { tsTodos = Storage.getGlobalTodos(); }
 function tsSaveTodos() { Storage.setGlobalTodos(tsTodos); }
 
-function tsGetFilteredTodos() {
-  switch (tsCurrentFilter) {
-    case 'active': return tsTodos.filter(t => !t.completed);
-    case 'completed': return tsTodos.filter(t => t.completed);
-    default: return tsTodos;
-  }
-}
-
 function tsRender() {
-  const filtered = tsGetFilteredTodos();
-  const activeTodos = tsTodos.filter(t => !t.completed);
-  const completedTodos = tsTodos.filter(t => t.completed);
+  const todoItems = tsTodos.filter(t => t.status === 'todo');
+  const doingItems = tsTodos.filter(t => t.status === 'doing');
+  const doneItems = tsTodos.filter(t => t.status === 'done');
   const total = tsTodos.length;
+  const doneCount = doneItems.length;
 
   if (total > 0) {
     DOM.globalStatsBar.style.display = 'flex';
     DOM.globalProgressSection.style.display = 'block';
-    DOM.globalActiveCount.textContent = activeTodos.length;
-    const pct = Math.round((completedTodos.length / total) * 100);
+    DOM.globalActiveCount.textContent = (todoItems.length + doingItems.length);
+    const pct = Math.round((doneCount / total) * 100);
     DOM.globalProgressFill.style.width = pct + '%';
     DOM.globalProgressPct.textContent = pct + '%';
   } else {
@@ -3040,99 +3045,200 @@ function tsRender() {
     DOM.globalProgressSection.style.display = 'none';
   }
 
-  DOM.globalClearCompletedBtn.style.display = completedTodos.length > 0 ? 'inline-flex' : 'none';
-  DOM.globalTodoList.innerHTML = '';
+  DOM.globalClearCompletedBtn.style.display = doneCount > 0 ? 'inline-flex' : 'none';
 
-  if (filtered.length === 0) {
-    let emptyMsg, emptyTitle, emptyIcon;
-    if (tsCurrentFilter === 'active' && total > 0) {
-      emptyTitle = 'No active tasks'; emptyMsg = 'Everything is done. Well played.'; emptyIcon = 'ph ph-smiley';
-    } else if (tsCurrentFilter === 'completed' && total > 0) {
-      emptyTitle = 'Nothing completed yet'; emptyMsg = 'Complete some tasks to see them here.'; emptyIcon = 'ph ph-check-circle';
-    } else {
-      emptyTitle = 'Global list clear'; emptyMsg = 'Capture ideas that don\'t belong to a specific day.'; emptyIcon = 'ph ph-clipboard-text';
-    }
-    DOM.globalTodoList.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="${emptyIcon}"></i></div><p class="empty-title">${escapeHtml(emptyTitle)}</p><p class="empty-desc">${escapeHtml(emptyMsg)}</p></div>`;
-    return;
-  }
+  DOM.kanbanTodoCount.textContent = todoItems.length;
+  DOM.kanbanDoingCount.textContent = doingItems.length;
+  DOM.kanbanDoneCount.textContent = doneItems.length;
 
-  filtered.forEach((todo, index) => {
-    const item = document.createElement('div');
-    item.className = 'todo-item fade-in' + (todo.completed ? ' completed' : '');
-    item.style.animationDelay = Math.min(index * 0.04, 0.4) + 's';
-    item.dataset.id = todo.id;
-
-    if (tsEditingId === todo.id) {
-      item.innerHTML = `
-        <div class="checkbox-wrapper">
-          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
-          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
-        </div>
-        <input type="text" class="edit-input" value="${escapeAttr(todo.text)}" maxlength="200" aria-label="Edit global task">
-        <div class="todo-actions" style="opacity:1">
-          <button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>
-          <button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>
-        </div>`;
-    } else {
-      item.innerHTML = `
-        <div class="checkbox-wrapper">
-          <input type="checkbox" ${todo.completed ? 'checked' : ''} aria-label="Mark task complete">
-          <div class="checkbox-visual"><svg viewBox="0 0 16 16"><polyline points="3.5 8 6.5 11 12.5 5"/></svg></div>
-        </div>
-        <span class="todo-text">${escapeHtml(todo.text)}</span>
-        <div class="todo-actions">
-          <button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>
-          <button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>
-        </div>`;
-    }
-
-    DOM.globalTodoList.appendChild(item);
-
-    const checkbox = item.querySelector('input[type="checkbox"]');
-    checkbox.addEventListener('change', () => tsToggleTodo(todo.id));
-
-    if (tsEditingId === todo.id) {
-      const editInput = item.querySelector('.edit-input');
-      const saveBtn = item.querySelector('.save-btn');
-      const cancelBtn = item.querySelector('.cancel-btn');
-
-      requestAnimationFrame(() => {
-        editInput.focus();
-        editInput.setSelectionRange(editInput.value.length, editInput.value.length);
-      });
-
-      const save = () => {
-        const newText = editInput.value.trim();
-        if (newText && newText !== todo.text) {
-          const t = tsTodos.find(x => x.id === todo.id);
-          if (t) t.text = newText;
-          tsSaveTodos();
-          showToast('Global task updated', 'success');
-        }
-        tsEditingId = null;
-        tsRender();
-      };
-
-      editInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); save(); }
-        if (e.key === 'Escape') { tsEditingId = null; tsRender(); }
-      });
-
-      saveBtn.addEventListener('click', save);
-      cancelBtn.addEventListener('click', () => { tsEditingId = null; tsRender(); });
-    } else {
-      const editBtn = item.querySelector('.edit-btn');
-      if (editBtn) editBtn.addEventListener('click', () => { tsEditingId = todo.id; tsRender(); });
-
-      const deleteBtn = item.querySelector('.action-btn.delete');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
-          item.classList.add('removing');
-          setTimeout(() => tsDeleteTodo(todo.id), 300);
-        });
+  const renderList = (listEl, items, status) => {
+    listEl.innerHTML = '';
+    if (items.length === 0) {
+      let emptyMsg, emptyTitle, emptyIcon;
+      if (status === 'todo') {
+        emptyTitle = 'No todo tasks'; emptyMsg = 'Add tasks to get started.'; emptyIcon = 'ph ph-clipboard-text';
+      } else if (status === 'doing') {
+        emptyTitle = 'Nothing in progress'; emptyMsg = 'Drag tasks here when working on them.'; emptyIcon = 'ph ph-spinner';
+      } else {
+        emptyTitle = 'Nothing completed'; emptyMsg = 'Drag tasks here when done.'; emptyIcon = 'ph ph-check-circle';
       }
+      listEl.innerHTML = `<div class="empty-state" style="padding: 1.5rem 1rem;"><div class="empty-icon" style="font-size:1.5rem"><i class="${emptyIcon}"></i></div><p class="empty-title" style="font-size:0.9rem">${escapeHtml(emptyTitle)}</p><p class="empty-desc" style="font-size:0.8rem">${escapeHtml(emptyMsg)}</p></div>`;
+      return;
     }
-  });
+
+    items.forEach((todo, index) => {
+      const item = document.createElement('div');
+      item.className = 'todo-item kanban-item' + (status === 'done' ? ' completed' : '');
+      item.dataset.id = todo.id;
+      item.draggable = true;
+
+      if (tsEditingId === todo.id) {
+        item.innerHTML = `
+          <input type="text" class="edit-input" value="${escapeAttr(todo.text)}" maxlength="200" aria-label="Edit global task">
+          <div class="todo-actions" style="opacity:1">
+            <button class="action-btn save-btn" aria-label="Save edit" title="Save"><i class="ph ph-check"></i></button>
+            <button class="action-btn cancel-btn" aria-label="Cancel edit" title="Cancel"><i class="ph ph-x"></i></button>
+          </div>`;
+      } else {
+        item.innerHTML = `
+          <div class="drag-handle" title="Drag to move"><i class="ph ph-dots-six-vertical"></i></div>
+          <span class="todo-text">${escapeHtml(todo.text)}</span>
+          <div class="todo-actions">
+            <button class="action-btn edit-btn" aria-label="Edit task" title="Edit"><i class="ph ph-pencil-simple"></i></button>
+            <button class="action-btn delete" aria-label="Delete task" title="Delete"><i class="ph ph-trash"></i></button>
+          </div>`;
+      }
+
+      listEl.appendChild(item);
+
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', todo.id);
+        item.classList.add('dragging');
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+      });
+
+      // Touch Drag and Drop Support
+      let touchGhost = null;
+      let startX = 0, startY = 0;
+
+      item.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.todo-actions') || e.target.closest('input')) return;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+      }, { passive: true });
+
+      item.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+
+        if (!touchGhost && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+          item.classList.add('dragging');
+          touchGhost = item.cloneNode(true);
+          touchGhost.style.position = 'fixed';
+          touchGhost.style.zIndex = '9999';
+          touchGhost.style.pointerEvents = 'none';
+          touchGhost.style.opacity = '0.85';
+          touchGhost.style.width = item.offsetWidth + 'px';
+          document.body.appendChild(touchGhost);
+        }
+
+        if (touchGhost) {
+          e.preventDefault();
+          touchGhost.style.left = (touch.clientX - touchGhost.offsetWidth / 2) + 'px';
+          touchGhost.style.top = (touch.clientY - 30) + 'px';
+
+          document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const colBelow = elemBelow ? elemBelow.closest('.kanban-column') : null;
+          if (colBelow) {
+            colBelow.classList.add('drag-over');
+          }
+        }
+      }, { passive: false });
+
+      item.addEventListener('touchend', (e) => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+
+        if (touchGhost) {
+          const touch = e.changedTouches[0];
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const colBelow = elemBelow ? elemBelow.closest('.kanban-column') : null;
+
+          if (colBelow) {
+            const dropzone = colBelow.querySelector('.kanban-dropzone');
+            const newStatus = dropzone ? dropzone.dataset.status : null;
+            if (newStatus) {
+              const draggedIndex = tsTodos.findIndex(t => t.id === todo.id);
+              if (draggedIndex !== -1) {
+                const [draggedTodo] = tsTodos.splice(draggedIndex, 1);
+                const oldStatus = draggedTodo.status;
+                draggedTodo.status = newStatus;
+
+                const targetItemEl = elemBelow ? elemBelow.closest('.todo-item') : null;
+                if (targetItemEl && targetItemEl.dataset.id !== todo.id) {
+                  const targetId = targetItemEl.dataset.id;
+                  const targetIndex = tsTodos.findIndex(t => t.id === targetId);
+                  if (targetIndex !== -1) {
+                    tsTodos.splice(targetIndex, 0, draggedTodo);
+                  } else {
+                    tsTodos.push(draggedTodo);
+                  }
+                } else {
+                  tsTodos.push(draggedTodo);
+                }
+
+                if (newStatus === 'done' && oldStatus !== 'done') {
+                  playCompletionSfx();
+                  showToast('Task completed & reordered', 'success');
+                } else {
+                  showToast('Task reordered', 'success');
+                }
+
+                tsSaveTodos();
+                tsRender();
+              }
+            }
+          }
+
+          touchGhost.remove();
+          touchGhost = null;
+        }
+      });
+
+      if (tsEditingId === todo.id) {
+        const editInput = item.querySelector('.edit-input');
+        const saveBtn = item.querySelector('.save-btn');
+        const cancelBtn = item.querySelector('.cancel-btn');
+
+        requestAnimationFrame(() => {
+          editInput.focus();
+          editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+        });
+
+        const save = () => {
+          const newText = editInput.value.trim();
+          if (newText && newText !== todo.text) {
+            const t = tsTodos.find(x => x.id === todo.id);
+            if (t) t.text = newText;
+            tsSaveTodos();
+            showToast('Global task updated', 'success');
+          }
+          tsEditingId = null;
+          tsRender();
+        };
+
+        editInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); save(); }
+          if (e.key === 'Escape') { tsEditingId = null; tsRender(); }
+        });
+
+        saveBtn.addEventListener('click', save);
+        cancelBtn.addEventListener('click', () => { tsEditingId = null; tsRender(); });
+      } else {
+        const editBtn = item.querySelector('.edit-btn');
+        if (editBtn) editBtn.addEventListener('click', () => { tsEditingId = todo.id; tsRender(); });
+
+        const deleteBtn = item.querySelector('.action-btn.delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => {
+            item.classList.add('removing');
+            setTimeout(() => tsDeleteTodo(todo.id), 300);
+          });
+        }
+      }
+    });
+  };
+
+  renderList(DOM.kanbanTodoList, todoItems, 'todo');
+  renderList(DOM.kanbanDoingList, doingItems, 'doing');
+  renderList(DOM.kanbanDoneList, doneItems, 'done');
 }
 
 function tsAddTodo() {
@@ -3145,7 +3251,7 @@ function tsAddTodo() {
   const todo = {
     id: generateId(),
     text: text,
-    completed: false,
+    status: 'todo',
     createdAt: Date.now()
   };
 
@@ -3157,12 +3263,16 @@ function tsAddTodo() {
   showToast('Global task added', 'success');
 }
 
-function tsToggleTodo(id) {
+function tsUpdateTodoStatus(id, newStatus) {
   const todo = tsTodos.find(t => t.id === id);
-  if (todo) {
-    todo.completed = !todo.completed;
-    if (todo.completed) {
+  if (todo && todo.status !== newStatus) {
+    const oldStatus = todo.status;
+    todo.status = newStatus;
+    if (newStatus === 'done' && oldStatus !== 'done') {
       playCompletionSfx();
+      showToast('Task completed', 'success');
+    } else {
+      showToast(`Moved to ${newStatus}`, 'neutral');
     }
     tsSaveTodos();
     tsRender();
@@ -3176,12 +3286,12 @@ function tsDeleteTodo(id) {
   showToast('Global task removed', 'neutral');
 }
 
-function tsClearCompleted() {
-  const count = tsTodos.filter(t => t.completed).length;
-  tsTodos = tsTodos.filter(t => !t.completed);
+function tsClearDone() {
+  const count = tsTodos.filter(t => t.status === 'done').length;
+  tsTodos = tsTodos.filter(t => t.status !== 'done');
   tsSaveTodos();
   tsRender();
-  showToast(`${count} global task${count !== 1 ? 's' : ''} cleared`, 'neutral');
+  showToast(`${count} completed task${count !== 1 ? 's' : ''} cleared`, 'neutral');
 }
 
 // --- Initialization ---
@@ -3190,14 +3300,82 @@ function initTaskset() {
   
   if (DOM.globalAddBtn) DOM.globalAddBtn.addEventListener('click', tsAddTodo);
   if (DOM.globalTodoInput) DOM.globalTodoInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tsAddTodo(); });
-  if (DOM.globalClearCompletedBtn) DOM.globalClearCompletedBtn.addEventListener('click', tsClearCompleted);
+  if (DOM.globalClearCompletedBtn) DOM.globalClearCompletedBtn.addEventListener('click', tsClearDone);
 
-  DOM.globalFilterTabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      DOM.globalFilterTabs.forEach((t) => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      tsCurrentFilter = tab.dataset.globalFilter;
+  const kanbanBoard = document.getElementById('kanbanBoard');
+  const prevBtn = document.querySelector('.kanban-prev-btn');
+  const nextBtn = document.querySelector('.kanban-next-btn');
+
+  if (kanbanBoard && prevBtn && nextBtn) {
+    prevBtn.addEventListener('click', () => {
+      const colWidth = kanbanBoard.querySelector('.kanban-column')?.offsetWidth || 320;
+      kanbanBoard.scrollBy({ left: -(colWidth + 24), behavior: 'smooth' });
+    });
+    nextBtn.addEventListener('click', () => {
+      const colWidth = kanbanBoard.querySelector('.kanban-column')?.offsetWidth || 320;
+      kanbanBoard.scrollBy({ left: colWidth + 24, behavior: 'smooth' });
+    });
+
+    kanbanBoard.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const rect = kanbanBoard.getBoundingClientRect();
+      const threshold = 60;
+      const speed = 10;
+      if (e.clientX - rect.left < threshold) {
+        kanbanBoard.scrollLeft -= speed;
+      } else if (rect.right - e.clientX < threshold) {
+        kanbanBoard.scrollLeft += speed;
+      }
+    });
+  }
+
+  const dropzones = [DOM.kanbanTodoList, DOM.kanbanDoingList, DOM.kanbanDoneList];
+  dropzones.forEach(zone => {
+    const column = zone.closest('.kanban-column');
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (column) column.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', (e) => {
+      if (!zone.contains(e.relatedTarget)) {
+        if (column) column.classList.remove('drag-over');
+      }
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (column) column.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const newStatus = zone.dataset.status;
+      if (!id || !newStatus) return;
+
+      const draggedIndex = tsTodos.findIndex(t => t.id === id);
+      if (draggedIndex === -1) return;
+
+      const [draggedTodo] = tsTodos.splice(draggedIndex, 1);
+      const oldStatus = draggedTodo.status;
+      draggedTodo.status = newStatus;
+
+      const targetItemEl = e.target.closest('.todo-item');
+      if (targetItemEl && targetItemEl.dataset.id !== id) {
+        const targetId = targetItemEl.dataset.id;
+        const targetIndex = tsTodos.findIndex(t => t.id === targetId);
+        if (targetIndex !== -1) {
+          tsTodos.splice(targetIndex, 0, draggedTodo);
+        } else {
+          tsTodos.push(draggedTodo);
+        }
+      } else {
+        tsTodos.push(draggedTodo);
+      }
+
+      if (newStatus === 'done' && oldStatus !== 'done') {
+        playCompletionSfx();
+        showToast('Task completed & reordered', 'success');
+      } else {
+        showToast('Task reordered', 'success');
+      }
+
+      tsSaveTodos();
       tsRender();
     });
   });
@@ -3320,11 +3498,12 @@ const GlobalSearch = {
       const globalTodos = Storage.getGlobalTodos();
       for (const todo of globalTodos) {
         if (this.fuzzyMatch(todo.text.toLowerCase(), needle)) {
+          const statusLabel = todo.status === 'done' ? ' · ✓ Done' : todo.status === 'doing' ? ' · In Progress' : ' · Todo';
           results.push({
             type: 'task',
             title: todo.text,
-            subtitle: 'Global Task' + (todo.completed ? ' · ✓ Completed' : ''),
-            icon: todo.completed ? 'ph-fill ph-check-circle' : 'ph ph-list-checks',
+            subtitle: 'Global Task' + statusLabel,
+            icon: todo.status === 'done' ? 'ph-fill ph-check-circle' : todo.status === 'doing' ? 'ph ph-spinner' : 'ph ph-list-checks',
             color: 'rgb(139,92,246)',
             searchText,
             action: () => {

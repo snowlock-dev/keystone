@@ -221,21 +221,46 @@
                   </div>
                 </section>
 
-                <div class="stats-bar" id="globalStatsBar" style="display:none;">
+                <div class="stats-bar" id="globalStatsBar" style="display:none; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                   <p class="stats-text"><span id="globalActiveCount">0</span> tasks remaining</p>
-                  <div class="filter-tabs" role="tablist" aria-label="Filter global tasks">
-                    <button class="filter-tab active" role="tab" aria-selected="true" data-global-filter="all">All</button>
-                    <button class="filter-tab" role="tab" aria-selected="false" data-global-filter="active">Active</button>
-                    <button class="filter-tab" role="tab" aria-selected="false" data-global-filter="completed">Done</button>
+                  <div class="kanban-nav-btns" style="display: flex; gap: 0.5rem;">
+                    <button class="nav-arrow kanban-prev-btn" aria-label="Previous column" title="Previous column" style="width: 2.25rem; height: 2.25rem;"><i class="ph ph-caret-left"></i></button>
+                    <button class="nav-arrow kanban-next-btn" aria-label="Next column" title="Next column" style="width: 2.25rem; height: 2.25rem;"><i class="ph ph-caret-right"></i></button>
                   </div>
                 </div>
 
-                <section class="todo-list" id="globalTodoList" aria-label="Global task list"></section>
+                <div class="kanban-board" id="kanbanBoard">
+                  <div class="kanban-column" data-status="todo">
+                    <div class="kanban-column-header">
+                      <h3>Todo</h3>
+                      <span class="kanban-count" id="kanbanTodoCount">0</span>
+                    </div>
+                    <div class="todo-list kanban-dropzone" id="kanbanTodoList" data-status="todo"></div>
+                  </div>
 
-                <button class="clear-completed-btn" id="globalClearCompletedBtn" style="display:none;" aria-label="Clear completed tasks">
-                  <i class="ph ph-trash" style="font-size:0.75rem"></i>
-                  Clear completed
-                </button>
+                  <div class="kanban-column" data-status="doing">
+                    <div class="kanban-column-header">
+                      <h3>Doing</h3>
+                      <span class="kanban-count" id="kanbanDoingCount">0</span>
+                    </div>
+                    <div class="todo-list kanban-dropzone" id="kanbanDoingList" data-status="doing"></div>
+                  </div>
+
+                  <div class="kanban-column" data-status="done">
+                    <div class="kanban-column-header">
+                      <h3>Done</h3>
+                      <span class="kanban-count" id="kanbanDoneCount">0</span>
+                    </div>
+                    <div class="todo-list kanban-dropzone" id="kanbanDoneList" data-status="done"></div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+                  <button class="clear-completed-btn" id="globalClearCompletedBtn" style="display:none;" aria-label="Clear done tasks">
+                    <i class="ph ph-trash" style="font-size:0.75rem"></i>
+                    Clear done
+                  </button>
+                </div>
               </div>
             </div>
           </div>
