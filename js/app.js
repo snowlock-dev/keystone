@@ -1,7 +1,6 @@
 const APP_NAME    = "Keystone";
 const APP_VERSION = "1";
 const STORAGE_KEY = "keystone";
-const DAY_MS      = 86_400_000;
 
 const _initRaw = localStorage.getItem(STORAGE_KEY) || '';
 const _initKB  = (new TextEncoder().encode(_initRaw).length / 1024).toFixed(2);
@@ -32,14 +31,10 @@ const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','
 const KEYBOARD_SHORTCUTS = {
   '1':'home', 
   '2':'taskflow', 
-  '3':'tracker', 
-  '4':'notes',
-  '5':'tests',
-  '6':'errors'
+  '3':'notes',
+  '4':'tests',
+  '5':'errors'
 };
-
-const DEFAULT_GOALS     = { hours: 4, minutes: 0, questions: 50 };
-const DEFAULT_QUESTIONS = { phy: 0, chem: 0, maths: 0 };
 
 
 if (typeof marked !== 'undefined') {
@@ -94,35 +89,6 @@ function getBackupFilename() {
   const monthShort = MONTH_NAMES_SHORT[now.getMonth()];
   const day = String(now.getDate()).padStart(2, '0');
   return `keystone-backup-${monthShort}-${day}.json`;
-}
-
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-
-  return d;
-}
-
-function getStartOfWeek(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0 (Sun) to 6 (Sat)
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-  return startOfDay(new Date(d.setDate(diff)));
-}
-
-function formatTime(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
-
-  return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
-}
-
-function formatDurationShort(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
 function checkStorageSize() {
@@ -182,63 +148,14 @@ function subjectByKey(key) {
   return SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
 }
 
-// Validate a single session object; returns normalized session or null if fundamentally invalid
-function validateSession(s) {
-  if (!s || typeof s !== "object") return null;
-
-  // ID: must be a non-empty string; generate one if missing (normalize)
-  let id = s.id;
-  if (typeof id !== "string" || id.trim() === "") {
-    id = generateId();
-  }
-
-  // Subject: must exist in SUBJECTS list; default to 'physics' if invalid (normalize)
-  const subjectKey =
-    typeof s.subject === "string" && SUBJECTS.some(sub => sub.key === s.subject)
-      ? s.subject
-      : "physics";
-
-  // Dates: must be valid ISO strings; discard session if they cannot be parsed
-  const startStr = typeof s.start === "string" ? s.start : null;
-  const endStr   = typeof s.end   === "string" ? s.end   : null;
-  if (!startStr || isNaN(new Date(startStr).getTime())) return null;
-  if (!endStr   || isNaN(new Date(endStr).getTime()))   return null;
-
-  // Duration: must be a finite, non-negative number; discard if invalid
-  const duration = typeof s.duration === "number" ? s.duration : null;
-  if (duration === null || !Number.isFinite(duration) || duration < 0) return null;
-
-  return {
-    id,
-    subject: subjectKey,
-    description: typeof s.description === "string" ? s.description : "",
-    start: startStr,
-    end: endStr,
-    duration
-  };
-}
-
-
 function validateData(data) {
   if (!data) return false;
   if (!data.tracker) return false;
   if (!data.tracker.days || typeof data.tracker.days !== "object") return false;
 
-  // Active session must be null or an object
-  if (data.tracker.activeSession !== null && typeof data.tracker.activeSession !== "object") {
-    return false;
-  }
-
   for (const day of Object.values(data.tracker.days)) {
     if (!day || typeof day !== "object") return false;
     if (!Array.isArray(day.todos)) return false;
-    if (!Array.isArray(day.sessions)) return false;
-    if (typeof day.questions !== "object" || day.questions === null) return false;
-
-    // Validate every session before saving
-    for (const s of day.sessions) {
-      if (!validateSession(s)) return false;
-    }
   }
 
   if (!Array.isArray(data.tests)) return false;
@@ -252,18 +169,12 @@ function validateData(data) {
 
 const Storage = {
   _cache: null,
-  // Cached flat list of all sessions; invalidated on every write
-  _allSessionsCache: null,
 
   _defaultData() {
     return {
       version: 1,
       notes: { content: "" },
-      tracker: {
-        goals: { ...DEFAULT_GOALS },
-        days: {},
-        activeSession: null
-      },
+      tracker: { days: {} },
       deadline: { date: null, label: 'Until deadline' },
       globalTodos: [],
       tests: [],
@@ -297,8 +208,6 @@ const Storage = {
         return false;
       }
 
-      // Invalidate derived caches after successful commit
-      this._invalidateSessionsCache();
       return result !== undefined ? result : true;
     } catch (err) {
       console.error("Keystone: transaction failed; keeping original state", err);
@@ -306,11 +215,6 @@ const Storage = {
       this._cache = current;
       return false;
     }
-  },
-
-  // Invalidate the sessions list cache; called after every successful write
-  _invalidateSessionsCache() {
-    this._allSessionsCache = null;
   },
 
   _normalizeData(data) {
@@ -339,56 +243,13 @@ const Storage = {
     }
 
     // Tracker
+    // Only daily todos are kept; legacy session/question data is ignored.
     if (data.tracker && typeof data.tracker === "object") {
-
-      // Goals
-      normalized.tracker.goals = {
-        hours:     Number.isFinite(data.tracker.goals?.hours)     ? data.tracker.goals.hours     : DEFAULT_GOALS.hours,
-        minutes:   Number.isFinite(data.tracker.goals?.minutes)   ? data.tracker.goals.minutes   : DEFAULT_GOALS.minutes,
-        questions: Number.isFinite(data.tracker.goals?.questions) ? data.tracker.goals.questions : DEFAULT_GOALS.questions
-      };
-
-      // Active timer session
-      if (data.tracker.activeSession && typeof data.tracker.activeSession === "object") {
-        const as = data.tracker.activeSession;
-        normalized.tracker.activeSession = {
-          subject:
-            typeof as.subject === "string" && SUBJECTS.some(s => s.key === as.subject)
-              ? as.subject
-              : "physics",
-          description: typeof as.description === "string" ? as.description : "",
-          startedAt: Number.isSafeInteger(as.startedAt) ? as.startedAt : null,
-          pausedAccumulated: Number.isFinite(as.pausedAccumulated) ? as.pausedAccumulated : 0,
-          isPaused: !!as.isPaused
-        };
-      }
-
-      // Days
       if (data.tracker.days && typeof data.tracker.days === "object") {
         normalized.tracker.days = {};
 
         for (const [dayKey, day] of Object.entries(data.tracker.days)) {
-          normalized.tracker.days[dayKey] = {
-            sessions: [],
-            questions: { ...DEFAULT_QUESTIONS },
-            todos: []
-          };
-
-          // Sessions
-          if (Array.isArray(day.sessions)) {
-            normalized.tracker.days[dayKey].sessions = day.sessions
-              .map(s => validateSession(s)) // Returns normalized session or null
-              .filter(s => s !== null);     // Discard invalid sessions
-          }
-
-          // Questions
-          if (day.questions && typeof day.questions === "object") {
-            normalized.tracker.days[dayKey].questions = {
-              phy:   Number.isFinite(day.questions.phy)   ? day.questions.phy   : 0,
-              chem:  Number.isFinite(day.questions.chem)  ? day.questions.chem  : 0,
-              maths: Number.isFinite(day.questions.maths) ? day.questions.maths : 0
-            };
-          }
+          normalized.tracker.days[dayKey] = { todos: [] };
 
           // Todos
           if (Array.isArray(day.todos)) {
@@ -508,7 +369,7 @@ const Storage = {
     } catch (err) {
       if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
         console.error("Keystone: Storage limit exceeded.", err);
-        showToast('Storage full! Please export your data and clear old sessions/tests.', 'error');
+        showToast('Storage full! Please export your data and clear old data.', 'error');
       } else {
         console.error("Keystone: storage write error", err);
       }
@@ -524,7 +385,6 @@ const Storage = {
       return false;
     }
     this._cache = normalized;
-    this._invalidateSessionsCache();
     return this.write();
   },
 
@@ -539,34 +399,15 @@ const Storage = {
   setNotes(text)   { return this.transaction(draft => { draft.notes.content = text; }); },
   clearNotes()     { return this.transaction(draft => { draft.notes.content = ''; }); },
 
-  // -- Goals ------
-  getGoals()       { return { ...this.read().tracker.goals }; },
-  setGoals(goals)  { return this.transaction(draft => { draft.tracker.goals = goals; }); },
-
-  // -- Active Session Persistence ------
-  getActiveSession() {
-    const s = this.read().tracker.activeSession;
-    return s ? { ...s } : null;
-  },
-  setActiveSession(session) {
-    return this.transaction(draft => { draft.tracker.activeSession = session; });
-  },
-
   // Ensure a day exists inside a transaction draft: never mutates _cache directly
   _ensureDayInDraft(draft, date) {
     const key  = dayKey(date);
     if (!draft.tracker.days[key]) {
-      draft.tracker.days[key] = { sessions: [], questions: { ...DEFAULT_QUESTIONS }, todos: [] };
+      draft.tracker.days[key] = { todos: [] };
     }
     // Safety fallbacks for older save formats
-    if (!draft.tracker.days[key].todos)     draft.tracker.days[key].todos = [];
-    if (!draft.tracker.days[key].questions) draft.tracker.days[key].questions = { ...DEFAULT_QUESTIONS };
-    if (!draft.tracker.days[key].sessions)  draft.tracker.days[key].sessions = [];
+    if (!draft.tracker.days[key].todos) draft.tracker.days[key].todos = [];
     return draft.tracker.days[key];
-  },
-
-  dayExists(date) {
-    return !!this.read().tracker.days[dayKey(date)];
   },
 
   // -- Todos/Tasks ------
@@ -576,56 +417,6 @@ const Storage = {
   },
   setTodos(date, todos) {
     return this.transaction(draft => { this._ensureDayInDraft(draft, date).todos = todos; });
-  },
-
-  getQuestions(date) {
-    const day = this.read().tracker.days[dayKey(date)];
-    return day ? { ...DEFAULT_QUESTIONS, ...day.questions } : { ...DEFAULT_QUESTIONS };
-  },
-  setQuestions(date, q) {
-    return this.transaction(draft => { this._ensureDayInDraft(draft, date).questions = q; });
-  },
-
-  // Return deep clone to prevent external mutation of cached data
-  getSessions(date) {
-    const day = this.read().tracker.days[dayKey(date)];
-    return day ? deepClone(day.sessions || []) : [];
-  },
-
-  // Validate session before adding; use transaction
-  addSession(session) {
-    const validated = validateSession(session);
-    if (!validated) {
-      console.error("Keystone: refusing to add invalid session", session);
-      return false;
-    }
-    return this.transaction(draft => {
-      this._ensureDayInDraft(draft, new Date(validated.end)).sessions.push(validated);
-    });
-  },
-
-  removeSession(id) {
-    return this.transaction(draft => {
-      let removed = false;
-      for (const key of Object.keys(draft.tracker.days)) {
-        const before = draft.tracker.days[key].sessions.length;
-        draft.tracker.days[key].sessions = draft.tracker.days[key].sessions.filter(s => s.id !== id);
-        if (draft.tracker.days[key].sessions.length !== before) removed = true;
-      }
-      return removed;
-    });
-  },
-
-  // Cache the flat sessions list; invalidated on every write and cross-tab sync
-  allSessions() {
-    if (this._allSessionsCache) return this._allSessionsCache;
-
-    const out = [];
-    for (const day of Object.values(this.read().tracker.days)) {
-      if (Array.isArray(day.sessions)) out.push(...day.sessions);
-    }
-    this._allSessionsCache = out;
-    return out;
   },
 
   // -- Tests ----
@@ -736,47 +527,6 @@ const DOM = {
   globalProgressFill:      $('globalProgressFill'),
   globalProgressPct:       $('globalProgressPct'),
   globalClearCompletedBtn: $('globalClearCompletedBtn'),
-
-  subjectSelect:      $('subjectSelect'),
-  subjectTrigger:     $('subjectTrigger'),
-  sessionDesc:        $('sessionDesc'),
-  activeTimerDisplay: $('activeTimerDisplay'),
-  startBtn:           $('startBtn'),
-  endBtn:             $('endBtn'),
-
-  sessionLog:   $('sessionLog'),
-  openModalBtn: $('openModalBtn'),
-
-  sessionModal:    $('sessionModal'),
-  modalDuration:   $('modalDuration'),
-  modalEndTime:    $('modalEndTime'),
-  modalYesterday:  $('modalYesterday'),
-  modalDesc:       $('modalDesc'),
-  discardModalBtn: $('discardModalBtn'),
-  saveModalBtn:    $('saveModalBtn'),
-
-  statMaxDay:         $('statMaxDay'),
-  statAvgSession:     $('statAvgSession'),
-  statAvgHrsDay:      $('statAvgHrsDay'),
-  statTimeStreak:     $('statTimeStreak'),
-  statQuestionStreak: $('statQuestionStreak'),
-
-  pieChart:  $('pieChart'),
-  pieTotal:  $('pieTotal'),
-  pieLegend: $('pieLegend'),
-  barChart:  $('barChart'),
-  barPrev:      $('barPrev'),
-  barNext:      $('barNext'),
-  barWeekRange: $('barWeekRange'),
-
-  goalHours:         $('goalHours'),
-  goalMinutes:       $('goalMinutes'),
-  questionsGoal:     $('questionsGoal'),
-  qPhy:              $('qPhy'),
-  qChem:             $('qChem'),
-  qMaths:            $('qMaths'),
-  timeGoalText:      $('timeGoalText'),
-  questionsGoalText: $('questionsGoalText'),
 
   // Tests Dashboard
   testStatsCards:    $('testStatsCards'),
@@ -935,10 +685,7 @@ function switchSection(name) {
   // Resize charts after their section becomes visible
   requestAnimationFrame(() => {
     try {
-      if (name === 'tracker') {
-        if (chartInstances.pieChart) chartInstances.pieChart.resize();
-        if (chartInstances.barChart) chartInstances.barChart.resize();
-      } else if (name === 'tests') {
+      if (name === 'tests') {
         if (chartInstances.testLineChart) chartInstances.testLineChart.resize();
       }
     } catch (e) { console.error("Chart resize error:", e); }
@@ -1035,15 +782,6 @@ function renderCalendar() {
 DOM.calPrev.addEventListener('click', () => navigateCalendar(-1));
 DOM.calNext.addEventListener('click', () => navigateCalendar(1));
 renderCalendar();
-
-DOM.barPrev.addEventListener('click', () => {
-  barWeekOffset--;
-  renderBarChart();
-});
-DOM.barNext.addEventListener('click', () => {
-  barWeekOffset++;
-  renderBarChart();
-});
 
 
 // -- NOTES -- //
@@ -1160,337 +898,6 @@ DOM.notesInput.addEventListener('keydown', (e) => {
 });
 
 
-// TRACKER: ACTIVE SESSION
-const activeTracker = {
-  subject:           'physics',
-  description:       '',
-  startedAt:         null,
-  pausedAccumulated: 0,
-  isPaused:          false
-};
-
-// Used during cross-tab sync to avoid triggering a write loop.
-function resetActiveTrackerFields() {
-  activeTracker.subject           = 'physics';
-  activeTracker.description       = '';
-  activeTracker.startedAt         = null;
-  activeTracker.pausedAccumulated = 0;
-  activeTracker.isPaused          = false;
-}
-
-function resetActiveTracker() {
-  resetActiveTrackerFields();
-  Storage.setActiveSession(null); // Clear from storage on reset
-}
-
-function getActiveElapsedSec() {
-  if (!activeTracker.startedAt) return activeTracker.pausedAccumulated;
-  return activeTracker.pausedAccumulated + Math.floor((Date.now() - activeTracker.startedAt) / 1000);
-}
-
-function updateTimerUI() {
-  const elapsed   = getActiveElapsedSec();
-  const isRunning = !!activeTracker.startedAt;
-
-  DOM.activeTimerDisplay.textContent = formatTime(elapsed);
-  DOM.activeTimerDisplay.classList.toggle('running', isRunning);
-
-  DOM.startBtn.innerHTML = isRunning
-    ? '<i class="ph-fill ph-pause"></i>'
-    : '<i class="ph-fill ph-play"></i>';
-  DOM.startBtn.classList.toggle('pause', isRunning);
-  DOM.startBtn.classList.toggle('start', !isRunning);
-
-  DOM.endBtn.disabled         = !isRunning && activeTracker.pausedAccumulated === 0;
-  DOM.subjectSelect.disabled  = isRunning;
-  DOM.sessionDesc.disabled    = isRunning;
-}
-
-DOM.startBtn.addEventListener('click', () => {
-  if (activeTracker.startedAt) {
-    // Pause
-    activeTracker.pausedAccumulated = getActiveElapsedSec();
-    activeTracker.startedAt = null;
-    activeTracker.isPaused  = true;
-  } else {
-    // Start or resume
-    if (!activeTracker.isPaused) {
-      activeTracker.subject           = DOM.subjectSelect.value;
-      activeTracker.description       = DOM.sessionDesc.value.trim();
-      activeTracker.pausedAccumulated = 0;
-    }
-    activeTracker.startedAt = Date.now();
-    activeTracker.isPaused  = false;
-  }
-  Storage.setActiveSession({ ...activeTracker });
-  updateTimerUI();
-});
-
-DOM.endBtn.addEventListener('click', () => {
-  const rawDuration = getActiveElapsedSec();
-  const duration = Math.floor(rawDuration / 60) * 60;
-
-  if (duration > 60) {
-    const now   = new Date();
-    const start = new Date(now.getTime() - duration * 1000);
-    Storage.addSession({
-      id:          generateId(),
-      subject:     activeTracker.subject,
-      description: activeTracker.description,
-      start:       start.toISOString(),
-      end:         now.toISOString(),
-      duration
-    });
-    showToast(`Session logged: ${formatDurationShort(duration)}`, 'success');
-  } else {
-    showToast('Session shorter than 1 minute discarded', 'neutral');
-  }
-
-  resetActiveTracker();
-  DOM.sessionDesc.value   = '';
-  DOM.subjectSelect.value = 'physics';
-
-  updateTimerUI();
-  renderAll();
-});
-
-setInterval(() => {
-  if (activeTracker.startedAt) updateTimerUI();
-}, 1000);
-
-// Restore active session on load
-function initActiveSession() {
-  const saved = Storage.getActiveSession();
-  if (saved && (saved.startedAt || saved.isPaused)) {
-    Object.assign(activeTracker, saved);
-    DOM.subjectSelect.value = activeTracker.subject;
-    DOM.sessionDesc.value = activeTracker.description;
-  }
-  updateTimerUI();
-}
-initActiveSession();
-
-
-// -- TRACKER: SESSION LOG -- //
-function renderSessionLog() {
-  const todaySessions = Storage.getSessions(new Date())
-    .slice()
-    .sort((a, b) => new Date(b.end) - new Date(a.end));
-
-  const fragment = document.createDocumentFragment();
-
-  if (todaySessions.length === 0) {
-    const emptyMsg = document.createElement('div');
-    emptyMsg.style = 'grid-column: 1 / -1;text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem';
-    emptyMsg.textContent = 'No sessions logged today. Get started!';
-    fragment.appendChild(emptyMsg);
-  } else {
-    for (const s of todaySessions) {
-      const subj = subjectByKey(s.subject);
-      const time = new Date(s.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      const item = document.createElement('div');
-      item.className = 'session-card';
-      item.innerHTML = `
-        <button class="session-delete-btn" data-id="${s.id}" aria-label="Delete session">
-          <i class="ph ph-x"></i>
-        </button>
-        <div class="session-content">
-          <div class="session-tags">
-              <span class="session-tag" style="background:${subj.color}22;color:${subj.color}">
-                <i class="ph-fill ${subj.icon}"></i> ${subj.name}
-              </span>
-          </div>
-          <div class="session-desc">${escapeHtml(s.description) || 'Ended at ' + time}</div>
-          <div class="session-time">Logged today</div>
-          <div class="session-duration">${formatDurationShort(s.duration)}</div>
-        </div>
-      `;
-      fragment.appendChild(item);
-    }
-  }
-
-  DOM.sessionLog.innerHTML = '';
-  DOM.sessionLog.appendChild(fragment);
-}
-
-DOM.sessionLog.addEventListener('click', (e) => {
-  const btn = e.target.closest('.session-delete-btn');
-  if (!btn) return;
-  Storage.removeSession(btn.dataset.id);
-  renderAll();
-  showToast('Session deleted', 'success');
-});
-
-
-// -- TRACKER: MANUAL SESSION MODAL -- //
-DOM.openModalBtn.addEventListener('click', () => {
-  document.querySelector('input[name="modalSubject"][value="physics"]').checked = true;
-  DOM.modalDuration.value  = 30;
-  DOM.modalEndTime.value   = '';
-  DOM.modalYesterday.checked = false;
-  DOM.modalDesc.value      = '';
-  DOM.sessionModal.classList.add('active');
-});
-
-DOM.discardModalBtn.addEventListener('click', () => DOM.sessionModal.classList.remove('active'));
-DOM.sessionModal.addEventListener('click', (e) => {
-  if (e.target === DOM.sessionModal) DOM.sessionModal.classList.remove('active');
-});
-
-DOM.saveModalBtn.addEventListener('click', () => {
-  const checkedSubject = document.querySelector('input[name="modalSubject"]:checked');
-  if (!checkedSubject) {
-    showToast('Please select a subject', 'error');
-    return;
-  }
-  const subject     = checkedSubject.value;
-  const durationMin = parseInt(DOM.modalDuration.value, 10);
-  const desc        = DOM.modalDesc.value.trim();
-  const endTimeStr  = DOM.modalEndTime.value;
-  const isYesterday = DOM.modalYesterday.checked;
-
-  if (isNaN(durationMin) || durationMin <= 0) {
-    showToast('Please enter a valid duration', 'error');
-    return;
-  }
-
-  const durationSec = durationMin * 60;
-  const end = new Date();
-  
-  if (isYesterday) {
-    end.setDate(end.getDate() - 1);
-  }
-
-  if (endTimeStr) {
-    const [h, m] = endTimeStr.split(':').map(Number);
-    // Robustness check for invalid time strings
-    if (!isNaN(h) && !isNaN(m)) {
-      end.setHours(h, m, 0, 0);
-    }
-  }
-
-  const start = new Date(end.getTime() - durationSec * 1000);
-
-  Storage.addSession({
-    id:          generateId(),
-    subject,
-    description: desc,
-    start:       start.toISOString(),
-    end:         end.toISOString(),
-    duration:    durationSec
-  });
-
-  DOM.sessionModal.classList.remove('active');
-  renderAll();
-  showToast(isYesterday ? 'Yesterday\'s session added' : 'Manual session added', 'success');
-});
-
-
-// -- DASHBOARD: STATS COMPUTATION -- //
-// All functions below accept an optional `allSessions` array to avoid
-// calling Storage.allSessions() multiple times during a single render cycle.
-
-function getTodayTotalSeconds(allSessions) {
-  const todayStart = startOfDay(new Date()).getTime();
-  return (allSessions || Storage.allSessions())
-    .filter(s => new Date(s.end).getTime() >= todayStart)
-    .reduce((sum, s) => sum + s.duration, 0);
-}
-
-function computeDailyTotals(numDays, allSessions) {
-  const sessions = allSessions || Storage.allSessions();
-  const totals = {};
-  for (let i = 0; i < numDays; i++) {
-    const d = startOfDay(new Date());
-    d.setDate(d.getDate() - i);
-    totals[d.getTime()] = 0;
-  }
-  for (const s of sessions) {
-    const dayStart = startOfDay(new Date(s.end)).getTime();
-    if (totals[dayStart] !== undefined) totals[dayStart] += s.duration;
-  }
-  return totals;
-}
-
-// Accept cached sessions array to avoid redundant allSessions() calls
-function computeTimeStreak(allSessions) {
-  let streak = 0;
-  const sessions = allSessions || Storage.allSessions();
-  const loggedDays = new Set(sessions.map(s => startOfDay(new Date(s.end)).getTime()));
-
-  let i = 0;
-  while (true) {
-    const d = startOfDay(new Date());
-    d.setDate(d.getDate() - i);
-    const dayStart = d.getTime();
-    
-    if (loggedDays.has(dayStart)) {
-      streak++;
-      i++;
-    } else if (i === 0) {
-      // Don't break streak if today is empty but yesterday wasn't
-      i++; 
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
-function computeQuestionStreak() {
-  const goal = Storage.getGoals().questions;
-  if (!goal || goal <= 0) return 0;
-
-  let streak = 0;
-  let i = 0;
-  
-  while (true) {
-    const d = startOfDay(new Date());
-    d.setDate(d.getDate() - i);
-
-    if (!Storage.dayExists(d)) {
-      if (i === 0) { i++; continue; } 
-      break;
-    }
-    
-    const q = Storage.getQuestions(d);
-    const total = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
-    
-    if (total >= goal) {
-      streak++;
-      i++;
-    } else if (i === 0) {
-      i++; // Grace day for today
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
-
-// -- DASHBOARD : RENDERING -- //
-// Pass cached allSessions to every render function to avoid repeated reads
-
-function renderStats(dailyTotals, allSessions) {
-  const sessions = allSessions || Storage.allSessions();
-  const maxDay = Math.max(0, ...Object.values(dailyTotals));
-  DOM.statMaxDay.textContent = formatDurationShort(maxDay);
-
-  const thirtyDaysAgo = startOfDay(new Date()).getTime() - 29 * DAY_MS;
-  const recent = sessions.filter(s => new Date(s.end).getTime() >= thirtyDaysAgo);
-  const avgSes = recent.length > 0 ? recent.reduce((a, s) => a + s.duration, 0) / recent.length : 0;
-  DOM.statAvgSession.textContent = formatDurationShort(avgSes);
-
-  const weekTotal = Object.values(dailyTotals).reduce((a, b) => a + b, 0);
-  DOM.statAvgHrsDay.textContent = formatDurationShort(weekTotal / 7);
-
-  DOM.statTimeStreak.textContent = computeTimeStreak(sessions) + ' days';
-  DOM.statQuestionStreak.textContent = computeQuestionStreak() + ' days';
-}
-
-
 // --- CHART.JS SETUP --- //
 const chartInstances = {};
 
@@ -1505,259 +912,6 @@ if (typeof Chart !== 'undefined') {
   Chart.defaults.color = '#6b6b6b';
   Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
   Chart.defaults.font.family = "'Space Grotesk', sans-serif";
-}
-
-function renderPieChart(allSessions) {
-  try {
-    const sessions = allSessions || Storage.allSessions();
-    const sevenDaysAgo = startOfDay(new Date()).getTime() - 6 * DAY_MS;
-    const pieData = {};
-    SUBJECTS.forEach(s => { pieData[s.key] = 0; });
-
-    for (const s of sessions) {
-      if (new Date(s.end).getTime() >= sevenDaysAgo) {
-        pieData[s.subject] = (pieData[s.subject] || 0) + s.duration;
-      }
-    }
-
-    const total = Object.values(pieData).reduce((a, b) => a + b, 0);
-    DOM.pieTotal.textContent = formatDurationShort(total);
-    
-    const fragment = document.createDocumentFragment();
-
-    destroyChart('pieChart');
-
-    if (total === 0) {
-      const legend = document.createElement('div');
-      legend.className = 'legend-item';
-      legend.style.color = 'var(--muted)';
-      legend.textContent = 'No data yet';
-      fragment.appendChild(legend);
-    } else {
-      const labels = [];
-      const data = [];
-      const colors = [];
-
-      for (const subj of SUBJECTS) {
-        if (pieData[subj.key] > 0) {
-          labels.push(subj.name);
-          data.push(pieData[subj.key]);
-          colors.push(subj.color);
-
-          const pct = Math.round((pieData[subj.key] / total) * 100);
-          const legend = document.createElement('div');
-          legend.className = 'legend-item';
-          legend.innerHTML = `<span class="legend-dot" style="background:${subj.color}"></span> ${subj.name} (${pct}%)`;
-          fragment.appendChild(legend);
-        }
-      }
-
-      if (typeof Chart !== 'undefined') {
-        const cardColor = getComputedStyle(document.documentElement)
-          .getPropertyValue('--card').trim() || '#111';
-
-        chartInstances.pieChart = new Chart(DOM.pieChart.getContext('2d'), {
-          type: 'doughnut',
-          data: {
-            labels,
-            datasets: [{
-              data,
-              backgroundColor: colors,
-              borderColor: cardColor,
-              borderWidth: 2,
-              hoverOffset: 6
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '62%',
-            devicePixelRatio: 4,
-            plugins: {
-              legend: { display: false },
-              layout: {
-                padding: 50 
-              },
-              tooltip: {
-                callbacks: {
-                  label: (ctx) => ` ${ctx.label}: ${formatDurationShort(ctx.raw)}`
-                }
-              }
-            }
-          }
-        });
-      } else {
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'legend-item';
-        errorMsg.style.color = 'var(--muted)';
-        errorMsg.style.fontSize = '0.75rem';
-        errorMsg.textContent = 'Chart library unavailable';
-        fragment.appendChild(errorMsg);
-      }
-    }
-    
-    DOM.pieLegend.innerHTML = '';
-    DOM.pieLegend.appendChild(fragment);
-  } catch (e) {
-    console.error("Pie chart render error:", e);
-    showToast('Pie chart render error', 'error');
-  }
-}
-
-let barWeekOffset = 0;
-
-function renderBarChart(dailyTotals, allSessions) {
-  try {
-    const sessions = allSessions || Storage.allSessions();
-    destroyChart('barChart');
-
-    if (typeof Chart === 'undefined') return;
-
-    // Calculate Monday of the selected week
-    const today = new Date();
-    const startOfWeek = getStartOfWeek(today);
-    startOfWeek.setDate(startOfWeek.getDate() + (barWeekOffset * 7));
-    
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 6);
-
-    // Update range label
-    const formatDate = (d) => `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
-    DOM.barWeekRange.textContent = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
-
-    const labels = [];
-    const datasets = SUBJECTS.map(s => ({
-      label: s.name,
-      data: [],
-      backgroundColor: s.color,
-      borderColor: 'transparent',
-      borderWidth: 2,
-      borderRadius: 8,
-    }));
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(startOfWeek);
-      d.setDate(d.getDate() + i);
-      const dayStart = d.getTime();
-      const dayEnd   = dayStart + DAY_MS;
-      labels.push(DAY_NAMES_SHORT[d.getDay()]);
-
-      SUBJECTS.forEach((subj, idx) => {
-        const subjDur = sessions
-          .filter(s => s.subject === subj.key
-            && new Date(s.end).getTime() >= dayStart
-            && new Date(s.end).getTime() <  dayEnd)
-          .reduce((sum, s) => sum + s.duration, 0);
-        datasets[idx].data.push(subjDur);
-      });
-    }
-
-    chartInstances.barChart = new Chart(DOM.barChart.getContext('2d'), {
-      type: 'bar',
-      data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        devicePixelRatio: 4,
-        scales: {
-          x: {
-            stacked: true,
-            grid: { display: false },
-            ticks: { color: '#6b6b6b', font: { size: 10 } }
-          },
-          y: {
-            stacked: true,
-            beginAtZero: true,
-            grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: {
-              color: '#6b6b6b',
-              font: { size: 10 },
-              stepSize: 1800, // 30 minutes in seconds
-              callback: (v) => {
-                const hours = v / 3600;
-                if (hours === 0) return '0h';
-                return `${Number(hours.toFixed(1))}h`;
-              }
-            }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => ` ${ctx.dataset.label}: ${formatDurationShort(ctx.raw)}`
-            }
-          }
-        }
-      }
-    });
-  } catch (e) {
-    console.error("Bar chart render error:", e);
-    showToast('Bar Chart rendering error!', 'error');
-  }
-}
-
-
-// -- DASHBOARD: GOALS & QUESTIONS -- //
-
-function renderGoalProgress(allSessions) {
-  const goals    = Storage.getGoals();
-  const q        = Storage.getQuestions(new Date());
-  const goalSecs = goals.hours * 3600 + goals.minutes * 60;
-  const todaySecs= getTodayTotalSeconds(allSessions);
-  const totalQ   = (q.phy || 0) + (q.chem || 0) + (q.maths || 0);
-
-  DOM.timeGoalText.textContent = `${formatDurationShort(todaySecs)} / ${formatDurationShort(goalSecs)}`;
-  DOM.timeGoalText.classList.toggle('met', goalSecs > 0 && todaySecs >= goalSecs);
-
-  DOM.questionsGoalText.textContent = `${totalQ} / ${goals.questions}`;
-  DOM.questionsGoalText.classList.toggle('met', goals.questions > 0 && totalQ >= goals.questions);
-}
-
-function renderGoals(allSessions) {
-  const goals = Storage.getGoals();
-  const q     = Storage.getQuestions(new Date());
-
-  DOM.goalHours.value     = goals.hours;
-  DOM.goalMinutes.value   = goals.minutes;
-  DOM.questionsGoal.value = goals.questions;
-  DOM.qPhy.value          = q.phy;
-  DOM.qChem.value         = q.chem;
-  DOM.qMaths.value        = q.maths;
-
-  renderGoalProgress(allSessions);
-}
-
-[DOM.goalHours, DOM.goalMinutes, DOM.questionsGoal].forEach(input => {
-  input.addEventListener('input', () => {
-    Storage.setGoals({
-      hours:     parseInt(DOM.goalHours.value,     10) || 0,
-      minutes:   parseInt(DOM.goalMinutes.value,   10) || 0,
-      questions: parseInt(DOM.questionsGoal.value, 10) || 0
-    });
-    renderGoalProgress();
-  });
-});
-
-[DOM.qPhy, DOM.qChem, DOM.qMaths].forEach(input => {
-  input.addEventListener('input', () => {
-    Storage.setQuestions(new Date(), {
-      phy:   parseInt(DOM.qPhy.value,   10) || 0,
-      chem:  parseInt(DOM.qChem.value,  10) || 0,
-      maths: parseInt(DOM.qMaths.value, 10) || 0
-    });
-    renderGoalProgress();
-  });
-});
-
-// Retrieve sessions once and pass to all render functions
-function renderDashboard() {
-  const allSessions = Storage.allSessions(); // Single fetch for entire dashboard
-  const dailyTotals = computeDailyTotals(7, allSessions);
-  renderStats(dailyTotals, allSessions);
-  renderPieChart(allSessions);
-  renderBarChart(null, allSessions);
-  renderGoals(allSessions);
 }
 
 // TEST DASHBOARD LOGIC
@@ -2444,8 +1598,6 @@ if (DOM.errorLogList) {
 initErrorFilters();
 
 function renderAll() {
-  renderSessionLog();
-  renderDashboard();
   renderTestDashboard();
   renderErrorLog();
 }
@@ -3408,10 +2560,6 @@ const GlobalSearch = {
 
   open() {
     if (this.isOpen) return;
-    // Close any other open modal
-    if (DOM.sessionModal && DOM.sessionModal.classList.contains('active')) {
-      DOM.sessionModal.classList.remove('active');
-    }
     this.isOpen = true;
     DOM.gsOverlay.classList.add('active');
     DOM.gsInput.value = '';
@@ -3775,22 +2923,10 @@ window.addEventListener('storage', (e) => {
     GlobalSearch.handleInput();
   }
 
-  // Invalidate all caches to force a fresh read from localStorage
+  // Invalidate the cache to force a fresh read from localStorage
   Storage._cache = null;
-  Storage._invalidateSessionsCache();
 
   Storage.read();
-
-  // Restore active session if it was updated in another tab.
-  const saved = Storage.getActiveSession();
-  if (saved && (saved.startedAt || saved.isPaused)) {
-    Object.assign(activeTracker, saved);
-  } else {
-    resetActiveTrackerFields(); // In-memory only
-  }
-  DOM.subjectSelect.value = activeTracker.subject;
-  DOM.sessionDesc.value = activeTracker.description;
-  updateTimerUI();
 
   // Update notes from other tab only if the user is not actively editing
   if (!saveNotesDebounced.isPending()) {
@@ -3821,11 +2957,6 @@ function flushBeforeClose() {
 
   if (DOM.notesInput && DOM.notesInput.value !== Storage.getNotes()) {
     Storage.setNotes(DOM.notesInput.value);
-  }
-
-  // Persist the current active timer session so it survives page reload
-  if (activeTracker.startedAt || activeTracker.pausedAccumulated > 0) {
-    Storage.setActiveSession({ ...activeTracker });
   }
 }
 
