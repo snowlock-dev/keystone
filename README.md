@@ -56,11 +56,6 @@ validates it, and atomically commits it. If the data is invalid, it just gets re
 - *Cross-Tab Sync:* It uses `storage` events to keep tabs in sync, and background tabs pause their 
 note-saving to prevent overwrites.
 
-- *Normalization & Migration:* It automatically cleans up malformed data, generates missing 
-IDs, and migrates any of the older, legacy data.
-
-- *Storage Limit Awareness:* It tracks the actual byte size using `TextEncoder` and warns you when 
-you start getting close to that 5MB limit.
 
 ## Credits
 
