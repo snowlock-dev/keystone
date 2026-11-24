@@ -6,7 +6,7 @@
 
 ![image](assets/image.png)
 
-Keystone is my attempt at a private,local workspace website.
+Keystone is my attempt at a private, local workspace website.
 
 It tries to combine all of the features I love from different productivity
 apps and websites, while also allowing easy backups and a seamless experience.
