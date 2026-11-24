@@ -6,14 +6,12 @@
 
 ![image](assets/image.png)
 
-Keystone is my attempt at a private, local-first workspace website.
+Keystone is my attempt at a private,local workspace website.
 
 It tries to combine all of the features I love from different productivity
 apps and websites, while also allowing easy backups and a seamless experience.
 
-It was built with a focus on fast performance, crash-safe data handling, 
-and keyboard-driven workflows, bringing together task management, time 
-tracking, notes, and analytics into one unified website.
+It was built to bring together task management,  notes, and analytics into one website.
 
 > [!NOTE]
 > ABOUT AI USAGE:
@@ -38,7 +36,7 @@ Then visit it on any browser (`localhost:8000`)
 
 ## Keyboard Shortcuts
 1. `Ctrl/Cmd + K`: Opens Global Search
-2. `Ctrl/Cmd + 1–6`: Jumping between sections
+2. `Ctrl/Cmd + 1-5`: Jumping between sections
 3. `←-/-→`: Moving through months in calendar & days in taskflow
 4. `/`: Focuses the task input in TaskFlow
 5. `Esc`: Closes modals or kicks you out of Zen Mode
